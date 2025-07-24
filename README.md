@@ -158,4 +158,3 @@ Si tienes problemas:
 ## 🎉 ¡Disfruta Jugando!
 
 ¡Tu juego SpinLegends está listo para jugar! Invita a amigos y familiares a batallas épicas de spinning tops. "# SpinLegends"  
-"# SpinLegends"  

@@ -1,6 +1,8 @@
 using UnityEngine;
+using Photon.Pun;
+using Photon.Realtime;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviourPun, IPunObservable
 {
     [Header("Spinning Top Settings")]
     public float spinSpeed = 1000f;
@@ -8,60 +10,99 @@ public class PlayerController : MonoBehaviour
     public float jumpForce = 10f;
     public float maxHealth = 100f;
     
+    [Header("Network Settings")]
+    public float interpolationSpeed = 30f; // Aumentado para más suavidad
+    public float rotationInterpolationSpeed = 35f; // Aumentado para más suavidad
+    public float velocityInterpolationSpeed = 25f; // Aumentado para más suavidad
+    public float spinInterpolationSpeed = 40f; // Nueva variable para interpolación del giro
+    
     [Header("Components")]
     private Rigidbody rb;
     public Transform spinningTop;
     public ParticleSystem spinEffect;
     public Joystick joystick;
     
+    [Header("Network Variables")]
+    private Vector3 networkPosition;
+    private Quaternion networkRotation;
+    private bool networkIsSpinning;
+    private float networkHealth;
+    private float networkSpinSpeed;
+    private Vector3 networkVelocity;
+    private float lastNetworkTime;
+    
     private float currentHealth;
     private bool isSpinning = false;
     private bool isGrounded = true;
+    private float currentSpinSpeed = 0f;
     
     void Start()
     {
         currentHealth = maxHealth;
+        networkHealth = maxHealth;
         rb = GetComponent<Rigidbody>();
+        
         if (spinningTop == null)
         {
             Transform found = transform.Find("SpinningTop");
             spinningTop = found != null ? found : transform;
         }
-        // Asignar el joystick automáticamente si no está asignado
-        if (joystick == null)
-        {
-            joystick = FindFirstObjectByType<FixedJoystick>();
-            if (joystick == null)
-                joystick = FindFirstObjectByType<FloatingJoystick>();
-            if (joystick == null)
-                joystick = FindFirstObjectByType<VariableJoystick>();
-        }
-        if (joystick == null)
-            Debug.LogError("Joystick no encontrado o no asignado en PlayerController.");
-        else
-            Debug.Log("Joystick asignado correctamente: " + joystick.name);
         
-        // Hacer que el spinner gire desde el inicio
-        StartSpin();
+        // Solo configurar controles para el jugador local
+        if (photonView.IsMine)
+        {
+            // Asignar el joystick automáticamente si no está asignado
+            if (joystick == null)
+            {
+                joystick = FindFirstObjectByType<FixedJoystick>();
+                if (joystick == null)
+                    joystick = FindFirstObjectByType<FloatingJoystick>();
+                if (joystick == null)
+                    joystick = FindFirstObjectByType<VariableJoystick>();
+            }
+            if (joystick == null)
+                Debug.LogError("Joystick no encontrado o no asignado en PlayerController. ¿Está en la escena y activo?");
+            else
+                Debug.Log("Joystick asignado correctamente: " + joystick.name);
+            
+            // Hacer que el spinner gire desde el inicio
+            StartSpin();
+        }
+        else
+        {
+            // Para jugadores remotos, configurar el Rigidbody para interpolación
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
     }
     
     void Update()
     {
+        // Solo procesar input para el jugador local
+        if (!photonView.IsMine) return;
+        
         // Solo salto y giro visual si lo necesitas
         // HandleInput();
         // UpdateSpinEffect();
         // Si quieres mantener el salto en Update, puedes dejarlo aquí:
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            isGrounded = false;
+            Jump();
         }
     }
     
     void FixedUpdate()
     {
+        if (!photonView.IsMine) return;
+        
         if (isSpinning)
-            rb.AddTorque(Vector3.up * spinSpeed, ForceMode.Force);
+        {
+            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, spinSpeed, Time.fixedDeltaTime * 5f);
+            rb.AddTorque(Vector3.up * currentSpinSpeed, ForceMode.Force);
+        }
+        else
+        {
+            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, 0f, Time.fixedDeltaTime * 10f);
+        }
 
         HandlePhysicsMovement();
     }
@@ -70,18 +111,34 @@ public class PlayerController : MonoBehaviour
     {
         float horizontal = 0f;
         float vertical = 0f;
+        
+        // Priorizar joystick sobre teclado
         if (joystick != null)
         {
             horizontal = joystick.Horizontal;
             vertical = joystick.Vertical;
+            
+            // Aplicar deadzone para evitar drift
+            float joystickMagnitude = new Vector2(horizontal, vertical).magnitude;
+            if (joystickMagnitude < 0.1f)
+            {
+                horizontal = 0f;
+                vertical = 0f;
+            }
         }
         else
         {
+            // Fallback para teclado
             horizontal = Input.GetAxis("Horizontal");
             vertical = Input.GetAxis("Vertical");
         }
-        Vector3 movement = new Vector3(horizontal, 0, vertical) * moveSpeed * Time.fixedDeltaTime;
-        rb.MovePosition(rb.position + movement);
+        
+        // Solo mover si hay input significativo
+        if (Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f)
+        {
+            Vector3 movement = new Vector3(horizontal, 0, vertical) * moveSpeed * Time.fixedDeltaTime;
+            rb.MovePosition(rb.position + movement);
+        }
     }
     
     void HandleInput()
@@ -174,25 +231,103 @@ public class PlayerController : MonoBehaviour
             // Calculate damage based on spin speed and collision force
             float collisionForce = collision.relativeVelocity.magnitude;
             float damage = collisionForce * (isSpinning ? 2f : 1f);
-            TakeDamage(damage);
+            
+            // Aplicar daño a través de la red
+            otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
+            
+            // Aplicar knockback
+            Vector3 knockbackDirection = (transform.position - collision.transform.position).normalized;
+            float knockbackForce = collisionForce * 0.5f;
+            rb.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            
+            // Efectos de colisión
+            PlayCollisionEffects(collision.contacts[0].point);
+        }
+    }
+    
+    void PlayCollisionEffects(Vector3 collisionPoint)
+    {
+        // Aquí puedes agregar efectos de partículas, sonidos, etc.
+        Debug.Log($"Colisión en punto: {collisionPoint} con daño: {currentHealth}");
+        
+        // Shake de cámara si es el jugador local
+        if (photonView.IsMine && CameraShake.Instance != null)
+        {
+            CameraShake.Instance.ShakeCamera(0.2f, 0.3f);
         }
     }
     
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
+        currentHealth = Mathf.Max(0, currentHealth); // No permitir salud negativa
+        
+        Debug.Log($"Jugador {photonView.Owner.NickName} recibió {damage} de daño. Salud: {currentHealth}/{maxHealth}");
+        
         if (currentHealth <= 0)
         {
             Die();
         }
+        
         // Update UI
-        GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
+        if (GameManager.Instance != null)
+            GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
+            
+        // Efectos de daño
+        if (photonView.IsMine)
+        {
+            // Shake de cámara cuando recibes daño
+            if (CameraShake.Instance != null)
+            {
+                CameraShake.Instance.ShakeCamera(0.3f, 0.5f);
+            }
+        }
+    }
+    
+    [PunRPC]
+    public void TakeDamageRPC(float damage)
+    {
+        TakeDamage(damage);
     }
     
     void Die()
     {
-        // Handle player death
+        Debug.Log($"Jugador {photonView.Owner.NickName} ha muerto!");
+        
+        // Efectos de muerte
+        if (photonView.IsMine)
+        {
+            // Shake de cámara más fuerte
+            if (CameraShake.Instance != null)
+            {
+                CameraShake.Instance.ShakeCamera(0.5f, 1f);
+            }
+        }
+        
+        // Desactivar el jugador
         gameObject.SetActive(false);
+        
+        // Respawn después de un tiempo (opcional)
+        if (photonView.IsMine)
+        {
+            StartCoroutine(RespawnAfterDelay(3f));
+        }
+    }
+    
+    System.Collections.IEnumerator RespawnAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        // Respawn en una posición aleatoria
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
+        {
+            // Buscar NetworkManager para respawn
+            NetworkManager networkManager = FindFirstObjectByType<NetworkManager>();
+            if (networkManager != null)
+            {
+                networkManager.RespawnPlayer();
+            }
+        }
     }
     
     public bool IsSpinning()
@@ -201,4 +336,80 @@ public class PlayerController : MonoBehaviour
     }
     
     public Rigidbody Rigidbody => rb;
+    
+    // Propiedad pública para acceder a la salud actual
+    public float CurrentHealth => currentHealth;
+    
+    // Propiedad pública para acceder a la salud máxima
+    public float MaxHealth => maxHealth;
+    
+    // Photon Network Synchronization
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            // Enviar datos a otros jugadores
+            stream.SendNext(transform.position);
+            stream.SendNext(transform.rotation);
+            stream.SendNext(isSpinning);
+            stream.SendNext(currentHealth);
+            stream.SendNext(currentSpinSpeed);
+            stream.SendNext(rb.linearVelocity);
+        }
+        else
+        {
+            // Recibir datos de otros jugadores
+            networkPosition = (Vector3)stream.ReceiveNext();
+            networkRotation = (Quaternion)stream.ReceiveNext();
+            networkIsSpinning = (bool)stream.ReceiveNext();
+            networkHealth = (float)stream.ReceiveNext();
+            networkSpinSpeed = (float)stream.ReceiveNext();
+            networkVelocity = (Vector3)stream.ReceiveNext();
+            lastNetworkTime = Time.time;
+            
+            // Aplicar interpolación para movimiento suave
+            if (!photonView.IsMine)
+            {
+                // Interpolación de posición más suave con delta time compensado
+                float deltaTime = Mathf.Min(Time.deltaTime, 0.1f); // Limitar delta time para evitar saltos
+                transform.position = Vector3.Lerp(transform.position, networkPosition, deltaTime * interpolationSpeed);
+                
+                // Interpolación de rotación más suave
+                transform.rotation = Quaternion.Slerp(transform.rotation, networkRotation, deltaTime * rotationInterpolationSpeed);
+                
+                // Interpolación de velocidad para física más suave
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, networkVelocity, deltaTime * velocityInterpolationSpeed);
+                
+                // Sincronizar estado de giro
+                if (networkIsSpinning != isSpinning)
+                {
+                    isSpinning = networkIsSpinning;
+                    if (isSpinning)
+                        StartSpin();
+                    else
+                        StopSpin();
+                }
+                
+                // Aplicar giro visual basado en la velocidad de red (más suave)
+                if (spinningTop != null && isSpinning)
+                {
+                    // Interpolación más suave del giro
+                    float targetRotation = spinningTop.rotation.eulerAngles.y + networkSpinSpeed * deltaTime;
+                    float currentRotation = spinningTop.rotation.eulerAngles.y;
+                    
+                    // Usar LerpAngle para interpolación suave de ángulos
+                    float smoothRotation = Mathf.LerpAngle(currentRotation, targetRotation, deltaTime * spinInterpolationSpeed);
+                    spinningTop.rotation = Quaternion.Euler(0, smoothRotation, 0);
+                }
+                
+                // Sincronizar salud
+                if (Mathf.Abs(networkHealth - currentHealth) > 1f)
+                {
+                    currentHealth = networkHealth;
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
+                }
+            }
+        }
+    }
 } 

@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
 
     private PlayerController localPlayer;
+    private NetworkManager networkManager;
 
     void Awake()
     {
@@ -34,7 +35,33 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         SetupUI();
-        SpawnPlayer();
+        
+        // Buscar NetworkManager
+        networkManager = FindFirstObjectByType<NetworkManager>();
+        if (networkManager == null)
+        {
+            Debug.LogWarning("NetworkManager no encontrado. Creando uno automáticamente...");
+            CreateNetworkManager();
+        }
+    }
+    
+    void CreateNetworkManager()
+    {
+        GameObject networkManagerObj = new GameObject("NetworkManager");
+        networkManager = networkManagerObj.AddComponent<NetworkManager>();
+        
+        // Configurar referencias básicas
+        if (playerPrefab != null)
+        {
+            networkManager.playerPrefab = playerPrefab;
+        }
+        
+        if (spawnPoints.Length > 0)
+        {
+            networkManager.spawnPoints = spawnPoints;
+        }
+        
+        Debug.Log("NetworkManager creado automáticamente");
     }
 
     void SetupUI()
@@ -45,12 +72,10 @@ public class GameManager : MonoBehaviour
             jumpButton.onClick.AddListener(OnJumpButtonPressed);
     }
 
-    void SpawnPlayer()
+    public void SetLocalPlayer(PlayerController player)
     {
-        if (spawnPoints.Length == 0 || playerPrefab == null) return;
-        Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-        GameObject player = Instantiate(playerPrefab, spawnPoint.position, spawnPoint.rotation);
-        localPlayer = player.GetComponent<PlayerController>();
+        localPlayer = player;
+        Debug.Log("Jugador local configurado: " + player.name);
     }
 
     public void UpdateHealthUI(float currentHealth, float maxHealth)

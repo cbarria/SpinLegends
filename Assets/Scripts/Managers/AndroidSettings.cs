@@ -1,95 +1,116 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 public class AndroidSettings : MonoBehaviour
 {
-    [Header("Android Settings")]
-    public bool keepScreenOn = true;
-    public bool allowSleep = false;
-    public int targetFrameRate = 60;
-    public bool useAccelerometer = true;
+    [Header("Android UI Settings")]
+    public float androidTextScale = 1.2f;
+    public float androidButtonScale = 1.1f;
+    public bool enableHighDPI = true;
     
-    void Start()
+    [Header("Console Settings")]
+    public bool enableLargeConsoleText = true;
+    
+    void Awake()
     {
-        SetupAndroidSettings();
+        #if UNITY_ANDROID
+        ConfigureForAndroid();
+        #endif
     }
     
-    void SetupAndroidSettings()
+    void ConfigureForAndroid()
     {
-        // Set target frame rate
-        Application.targetFrameRate = targetFrameRate;
+        Debug.Log("🔧 Configurando para Android...");
         
-        // Keep screen on during gameplay
-        if (keepScreenOn)
+        // Configurar DPI para mejor calidad
+        if (enableHighDPI)
         {
-            Screen.sleepTimeout = SleepTimeout.NeverSleep;
-        }
-        else
-        {
-            Screen.sleepTimeout = SleepTimeout.SystemSetting;
-        }
-        
-        // Enable accelerometer for mobile controls
-        if (useAccelerometer)
-        {
-            Input.gyro.enabled = true;
+            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, true);
         }
         
-        // Set quality settings for mobile
-        QualitySettings.vSyncCount = 0;
-        QualitySettings.antiAliasing = 0;
+        // Configurar orientación
+        Screen.orientation = ScreenOrientation.LandscapeLeft;
         
-        // Optimize for mobile
-        Application.runInBackground = true;
-    }
-    
-    void OnApplicationPause(bool pauseStatus)
-    {
-        if (pauseStatus)
-        {
-            // Game paused - save state
-            SaveGameState();
-        }
-        else
-        {
-            // Game resumed - restore state
-            RestoreGameState();
-        }
-    }
-    
-    void OnApplicationFocus(bool hasFocus)
-    {
-        if (!hasFocus)
-        {
-            // Game lost focus - pause if needed
-            // GameManager.Instance.ShowPauseMenu(); // Eliminado porque ya no existe
-            Time.timeScale = 0f; // Opcional: Pausa el juego
-        }
-    }
-    
-    void SaveGameState()
-    {
-        // Save current game state
-        PlayerPrefs.SetFloat("PlayerHealth", 100f);
-        PlayerPrefs.SetInt("PlayerScore", 0);
-        PlayerPrefs.Save();
-    }
-    
-    void RestoreGameState()
-    {
-        // Restore game state if needed
-        float health = PlayerPrefs.GetFloat("PlayerHealth", 100f);
-        int score = PlayerPrefs.GetInt("PlayerScore", 0);
+        // Configurar UI scaling
+        ConfigureUIScaling();
         
-        // Apply restored values
-        if (GameManager.Instance != null)
+        // Configurar console para Android
+        if (enableLargeConsoleText)
         {
-            GameManager.Instance.UpdateHealthUI(health, 100f);
+            ConfigureConsoleForAndroid();
         }
+        
+        Debug.Log("✅ Configuración de Android completada");
     }
     
-    void OnDestroy()
+    void ConfigureUIScaling()
     {
-        // Clean up when game is destroyed
-        SaveGameState();
+        // Buscar todos los textos en la escena y escalarlos
+        TextMeshProUGUI[] allTexts = FindObjectsByType<TextMeshProUGUI>(FindObjectsSortMode.None);
+        foreach (TextMeshProUGUI text in allTexts)
+        {
+            if (text != null)
+            {
+                // Escalar el tamaño de fuente
+                text.fontSize = Mathf.RoundToInt(text.fontSize * androidTextScale);
+                
+                // Hacer el texto más legible
+                text.fontStyle = FontStyles.Bold;
+                text.enableAutoSizing = false;
+                
+                // Configurar para mejor legibilidad
+                text.textWrappingMode = TextWrappingModes.Normal;
+                text.richText = true;
+            }
+        }
+        
+        // Buscar todos los botones y escalarlos
+        Button[] allButtons = FindObjectsByType<Button>(FindObjectsSortMode.None);
+        foreach (Button button in allButtons)
+        {
+            if (button != null)
+            {
+                RectTransform rectTransform = button.GetComponent<RectTransform>();
+                if (rectTransform != null)
+                {
+                    // Escalar el botón
+                    rectTransform.localScale = Vector3.one * androidButtonScale;
+                }
+                
+                // Escalar el texto del botón
+                TextMeshProUGUI buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                {
+                    buttonText.fontSize = Mathf.RoundToInt(buttonText.fontSize * androidTextScale);
+                    buttonText.fontStyle = FontStyles.Bold;
+                }
+            }
+        }
+        
+        Debug.Log($"✅ Escalado UI completado: {allTexts.Length} textos, {allButtons.Length} botones");
+    }
+    
+    void ConfigureConsoleForAndroid()
+    {
+        // Configurar el tamaño de fuente de la consola para Android
+        #if UNITY_EDITOR
+        // En el editor, podemos configurar las preferencias
+        UnityEditor.EditorPrefs.SetInt("ConsoleFontSize", 16); // Tamaño más grande para Android
+        #endif
+        
+        Debug.Log("✅ Configuración de consola para Android aplicada");
+    }
+    
+    [ContextMenu("Apply Android Settings")]
+    public void ApplyAndroidSettings()
+    {
+        ConfigureForAndroid();
+    }
+    
+    [ContextMenu("Scale All UI Elements")]
+    public void ScaleAllUIElements()
+    {
+        ConfigureUIScaling();
     }
 } 
