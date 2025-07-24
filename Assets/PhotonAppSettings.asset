@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b3b4c8c0b3b4c8c0b3b4c8c0b3b4c8c, type: 3}
+  m_Name: PhotonAppSettings
+  m_EditorClassIdentifier: 
+  AppIdRealtime: "48163d51-a0c0-4314-bc62-1fa317dd803e"
+  AppIdFusion: ""
+  AppIdChat: ""
+  AppIdVoice: ""
+  ServerProtocol: 1
+  FixedRegion: ""
+  BestRegionPreference: ""
+  EnableLobbyStatistics: 0
+  NetworkLogging: 1
+  UseRpcMonoBehaviourCache: 1
+  UsePrefabCache: 1
+  PrefabCacheList: []
+  AppVersion: "1.0"
+  UseNameServer: 1
+  EnableAlternativePorts: 0
+  CloudRegion: ""
+  Protocol: 1
+  EnableAutoSyncScene: 0
+  AutoCleanUpPlayerObjects: 1
+  AutoSyncScene: 0
+  SendRate: 30
+  SendRateOnSerialize: 10
+  SerializeViewSynchronization: 1
+  EnableCrc: 1
+  ViewSynchronization: 1
+  OwnershipTransfer: 0
+  ResolveHostAddress: 0
+  IsMessageQueueRunning: 1
+  DisconnectTimeout: 10000
+  ConnectTimeout: 10000
+  DebugOut: 2
+  MasterServerAddress: ""
+  MasterServerPort: 5055
+  NameServerHost: "ns.exitgames.com"
+  NameServerPort: 4533
+  UseMasterServer: 1
+  UseNameServer: 1
+  UseAlternativeUdpPorts: 0
+  AlternativeUdpPorts: []
+  UseAlternativeTcpPorts: 0
+  AlternativeTcpPorts: []
+  UseAlternativeWebSocketPorts: 0
+  AlternativeWebSocketPorts: []
+  UseAlternativeSecureWebSocketPorts: 0
+  AlternativeSecureWebSocketPorts: []
+  UseAlternativeSecureUdpPorts: 0
+  AlternativeSecureUdpPorts: []
+  UseAlternativeSecureTcpPorts: 0
+  AlternativeSecureTcpPorts: [] 
