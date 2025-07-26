@@ -48,6 +48,9 @@ public class TouchController : MonoBehaviour
     
     void Update()
     {
+        // Deshabilitado temporalmente para evitar conflictos con PlayerController
+        // El PlayerController ya maneja el joystick directamente
+        /*
         if (playerController == null) return;
         
         // Handle joystick movement
@@ -55,10 +58,13 @@ public class TouchController : MonoBehaviour
         
         // Handle touch gestures
         HandleTouchGestures();
+        */
     }
     
     void HandleJoystickMovement()
     {
+        // Deshabilitado para evitar conflictos con PlayerController
+        /*
         if (moveJoystick == null || playerController == null) return;
         
         Vector2 joystickInput = new Vector2(moveJoystick.Horizontal, moveJoystick.Vertical);
@@ -70,6 +76,7 @@ public class TouchController : MonoBehaviour
             Vector3 movement = new Vector3(joystickInput.x, 0, joystickInput.y) * playerController.moveSpeed * Time.deltaTime;
             playerController.transform.Translate(movement);
         }
+        */
     }
     
     void HandleTouchGestures()

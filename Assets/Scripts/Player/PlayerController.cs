@@ -59,11 +59,19 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                     joystick = FindFirstObjectByType<FloatingJoystick>();
                 if (joystick == null)
                     joystick = FindFirstObjectByType<VariableJoystick>();
+                if (joystick == null)
+                    joystick = FindFirstObjectByType<DynamicJoystick>();
             }
             if (joystick == null)
                 Debug.LogError("Joystick no encontrado o no asignado en PlayerController. ¿Está en la escena y activo?");
             else
+            {
                 Debug.Log("Joystick asignado correctamente: " + joystick.name);
+                Debug.Log($"Joystick layer: {joystick.gameObject.layer}, Active: {joystick.gameObject.activeInHierarchy}");
+                
+                // Test del joystick después de un pequeño delay
+                Invoke(nameof(TestJoystick), 1f);
+            }
             
             // Hacer que el spinner gire desde el inicio
             StartSpin();
@@ -117,6 +125,12 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             horizontal = joystick.Horizontal;
             vertical = joystick.Vertical;
+            
+            // Debug para Android (solo cuando hay input significativo)
+            if (Application.platform == RuntimePlatform.Android && (Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f))
+            {
+                Debug.Log($"Joystick Input - H: {horizontal:F2}, V: {vertical:F2}");
+            }
             
             // Aplicar deadzone para evitar drift
             float joystickMagnitude = new Vector2(horizontal, vertical).magnitude;
@@ -343,6 +357,21 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     // Propiedad pública para acceder a la salud máxima
     public float MaxHealth => maxHealth;
     
+    // Método para debug del joystick
+    public void TestJoystick()
+    {
+        if (joystick != null)
+        {
+            Debug.Log($"Joystick Test - Name: {joystick.name}, Active: {joystick.gameObject.activeInHierarchy}");
+            Debug.Log($"Joystick Test - H: {joystick.Horizontal:F2}, V: {joystick.Vertical:F2}");
+            Debug.Log($"Joystick Test - Layer: {joystick.gameObject.layer}, Canvas: {joystick.GetComponentInParent<Canvas>()?.name}");
+        }
+        else
+        {
+            Debug.LogError("Joystick is null in TestJoystick()");
+        }
+    }
+    
     // Photon Network Synchronization
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
@@ -400,6 +429,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                     // Usar LerpAngle para interpolación suave de ángulos
                     float smoothRotation = Mathf.LerpAngle(currentRotation, targetRotation, deltaTime * spinInterpolationSpeed);
                     spinningTop.rotation = Quaternion.Euler(0, smoothRotation, 0);
+                }
+                else if (spinningTop == null)
+                {
+                    Debug.LogWarning("spinningTop is null in OnPhotonSerializeView - trying to find it");
+                    // Intentar encontrar el spinningTop si es null
+                    spinningTop = transform.Find("SpinningTop");
+                    if (spinningTop == null)
+                    {
+                        spinningTop = transform.GetChild(0); // Tomar el primer hijo como fallback
+                    }
                 }
                 
                 // Sincronizar salud

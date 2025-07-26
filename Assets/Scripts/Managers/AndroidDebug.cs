@@ -114,6 +114,8 @@ public class AndroidDebug : MonoBehaviour
                 joystick = FindFirstObjectByType<FloatingJoystick>();
             if (joystick == null)
                 joystick = FindFirstObjectByType<VariableJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<DynamicJoystick>();
                 
             if (joystick != null)
             {

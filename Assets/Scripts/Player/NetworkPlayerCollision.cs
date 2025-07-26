@@ -148,14 +148,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         Debug.Log($"Colisión en punto: {collisionPoint} con fuerza: {collisionForce}");
     }
     
-    [PunRPC]
-    void TakeDamageRPC(float damage)
-    {
-        if (playerController != null)
-        {
-            playerController.TakeDamage(damage);
-        }
-    }
+
     
     [PunRPC]
     void ApplyKnockbackRPC(Vector3 direction, float force)

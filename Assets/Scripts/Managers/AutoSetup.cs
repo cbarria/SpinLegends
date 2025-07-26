@@ -226,6 +226,9 @@ public class AutoSetup : MonoBehaviour
         
         // Configurar Android si es necesario
         SetupAndroidConfiguration();
+        
+        // Configurar y arreglar el joystick
+        SetupJoystickFixer();
     }
     
     void SetupAndroidConfiguration()
@@ -249,6 +252,57 @@ public class AutoSetup : MonoBehaviour
         }
         
         Debug.Log("✅ Configuración de Android completada");
+    }
+    
+    void SetupJoystickFixer()
+    {
+        Debug.Log("🔧 Configurando JoystickFixer...");
+        
+        // Configurar JoystickFixer
+        JoystickFixer joystickFixer = FindFirstObjectByType<JoystickFixer>();
+        if (joystickFixer == null)
+        {
+            GameObject joystickFixerObj = new GameObject("JoystickFixer");
+            joystickFixer = joystickFixerObj.AddComponent<JoystickFixer>();
+        }
+        
+        Debug.Log("✅ JoystickFixer configurado");
+        
+        // Configurar JoystickInputTester para debugging
+        SetupJoystickInputTester();
+    }
+    
+    void SetupJoystickInputTester()
+    {
+        Debug.Log("🔧 Configurando JoystickInputTester...");
+        
+        // Configurar JoystickInputTester
+        JoystickInputTester joystickTester = FindFirstObjectByType<JoystickInputTester>();
+        if (joystickTester == null)
+        {
+            GameObject joystickTesterObj = new GameObject("JoystickInputTester");
+            joystickTester = joystickTesterObj.AddComponent<JoystickInputTester>();
+        }
+        
+        Debug.Log("✅ JoystickInputTester configurado");
+        
+        // Configurar AndroidJoystickEnabler específicamente para Android
+        SetupAndroidJoystickEnabler();
+    }
+    
+    void SetupAndroidJoystickEnabler()
+    {
+        Debug.Log("🔧 Configurando AndroidJoystickEnabler...");
+        
+        // Configurar AndroidJoystickEnabler
+        AndroidJoystickEnabler androidJoystickEnabler = FindFirstObjectByType<AndroidJoystickEnabler>();
+        if (androidJoystickEnabler == null)
+        {
+            GameObject androidJoystickEnablerObj = new GameObject("AndroidJoystickEnabler");
+            androidJoystickEnabler = androidJoystickEnablerObj.AddComponent<AndroidJoystickEnabler>();
+        }
+        
+        Debug.Log("✅ AndroidJoystickEnabler configurado");
     }
     
     [ContextMenu("Verify Setup")]
