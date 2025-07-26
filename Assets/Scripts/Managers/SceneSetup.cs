@@ -47,7 +47,7 @@ public class SceneSetup : MonoBehaviour
         SetupStatusUI();
         SetupRoomInfoUI();
         
-        Debug.Log("✅ Configuración de escena completada");
+        Debug.Log("✅ Scene setup completed");
     }
     
     void SetupNetworkManager()
@@ -132,7 +132,7 @@ public class SceneSetup : MonoBehaviour
         
         // Configurar panel de estado
         Image statusPanelImage = statusPanel.AddComponent<Image>();
-        statusPanelImage.color = new Color(0, 0, 0, 0.8f);
+        statusPanelImage.color = new Color(0, 0, 0, 0.3f); // More transparent
         
         RectTransform statusPanelRect = statusPanel.GetComponent<RectTransform>();
         statusPanelRect.anchorMin = new Vector2(0.7f, 0.85f);
@@ -163,7 +163,7 @@ public class SceneSetup : MonoBehaviour
         statusText.color = Color.white;
         statusText.fontStyle = FontStyles.Bold;
         statusText.alignment = TextAlignmentOptions.Left;
-        statusText.text = "Conectando...";
+        statusText.text = "Connecting...";
         
         RectTransform statusTextRect = statusText.GetComponent<RectTransform>();
         statusTextRect.anchorMin = new Vector2(0.25f, 0);
@@ -179,7 +179,7 @@ public class SceneSetup : MonoBehaviour
             multiplayerUI.statusIcon = statusIcon;
         }
         
-        Debug.Log("✅ Panel de estado creado en esquina superior derecha");
+        Debug.Log("✅ Status panel created in top-right corner");
     }
     
     void SetupRoomInfoUI()
@@ -190,7 +190,7 @@ public class SceneSetup : MonoBehaviour
         
         // Configurar panel de información de sala
         Image roomInfoPanelImage = roomInfoPanel.AddComponent<Image>();
-        roomInfoPanelImage.color = new Color(0, 0, 0, 0.7f);
+        roomInfoPanelImage.color = new Color(0, 0, 0, 0.3f); // More transparent
         
         RectTransform roomInfoPanelRect = roomInfoPanel.GetComponent<RectTransform>();
         roomInfoPanelRect.anchorMin = new Vector2(0.02f, 0.85f);
@@ -270,6 +270,6 @@ public class SceneSetup : MonoBehaviour
             multiplayerUI.playerIcon = playerIcon;
         }
         
-        Debug.Log("✅ Panel de información de sala creado en esquina superior izquierda");
+        Debug.Log("✅ Room info panel created in top-left corner");
     }
 } 

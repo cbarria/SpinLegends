@@ -303,6 +303,24 @@ public class AutoSetup : MonoBehaviour
         }
         
         Debug.Log("✅ AndroidJoystickEnabler configurado");
+        
+        // Configurar HealthBarManager para health bars
+        SetupHealthBarManager();
+    }
+    
+    void SetupHealthBarManager()
+    {
+        Debug.Log("🔧 Setting up HealthBarManager...");
+        
+        // Configurar HealthBarManager
+        HealthBarManager healthBarManager = FindFirstObjectByType<HealthBarManager>();
+        if (healthBarManager == null)
+        {
+            GameObject healthBarManagerObj = new GameObject("HealthBarManager");
+            healthBarManager = healthBarManagerObj.AddComponent<HealthBarManager>();
+        }
+        
+        Debug.Log("✅ HealthBarManager configured");
     }
     
     [ContextMenu("Verify Setup")]

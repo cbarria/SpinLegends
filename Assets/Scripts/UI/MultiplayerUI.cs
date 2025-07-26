@@ -40,7 +40,7 @@ public class MultiplayerUI : MonoBehaviour
         networkManager = FindFirstObjectByType<NetworkManager>();
         if (networkManager == null)
         {
-            Debug.LogError("NetworkManager no encontrado en MultiplayerUI!");
+            Debug.LogError("NetworkManager not found in MultiplayerUI!");
             return;
         }
         

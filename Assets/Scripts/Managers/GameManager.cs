@@ -40,7 +40,7 @@ public class GameManager : MonoBehaviour
         networkManager = FindFirstObjectByType<NetworkManager>();
         if (networkManager == null)
         {
-            Debug.LogWarning("NetworkManager no encontrado. Creando uno automáticamente...");
+            Debug.LogWarning("NetworkManager not found. Creating one automatically...");
             CreateNetworkManager();
         }
     }
@@ -61,7 +61,7 @@ public class GameManager : MonoBehaviour
             networkManager.spawnPoints = spawnPoints;
         }
         
-        Debug.Log("NetworkManager creado automáticamente");
+        Debug.Log("NetworkManager created automatically");
     }
 
     void SetupUI()

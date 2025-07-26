@@ -43,7 +43,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         // Verificar si es colisión con otro jugador
         if (collision.gameObject.CompareTag("Player"))
         {
-            Debug.Log($"Colisión detectada con jugador: {collision.gameObject.name}, Fuerza: {collision.relativeVelocity.magnitude}");
+            Debug.Log($"Collision detected with player: {collision.gameObject.name}, Force: {collision.relativeVelocity.magnitude}");
             HandlePlayerCollision(collision);
         }
     }
@@ -53,7 +53,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         PlayerController otherPlayer = collision.gameObject.GetComponent<PlayerController>();
         if (otherPlayer == null) return;
         
-        Debug.Log($"Procesando colisión con {otherPlayer.name}");
+        Debug.Log($"Processing collision with {otherPlayer.name}");
         
         // Calcular fuerza de colisión
         float collisionForce = collision.relativeVelocity.magnitude;
@@ -104,7 +104,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         // Efectos visuales de colisión
         PlayCollisionEffects(collision.contacts[0].point, collisionForce);
         
-        Debug.Log($"Colisión: Daño {damage}, Knockback {actualKnockbackForce}, Fuerza {collisionForce}");
+        Debug.Log($"Collision: Damage {damage}, Knockback {actualKnockbackForce}, Force {collisionForce}");
     }
     
     void SyncCollisionToNetwork(Vector3 collisionPoint, float damage, Vector3 knockbackDirection)
@@ -145,7 +145,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
             CameraShake.Instance.ShakeCamera(shakeIntensity * 0.3f, 0.5f);
         }
         
-        Debug.Log($"Colisión en punto: {collisionPoint} con fuerza: {collisionForce}");
+        Debug.Log($"Collision at point: {collisionPoint} with force: {collisionForce}");
     }
     
 
@@ -168,7 +168,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
                     CameraShake.Instance.ShakeCamera(shakeIntensity * 0.3f, 0.4f);
                 }
                 
-                Debug.Log($"Knockback aplicado: Fuerza {force}, Dirección {direction}");
+                Debug.Log($"Knockback applied: Force {force}, Direction {direction}");
             }
             
             // Efectos visuales de knockback
@@ -231,7 +231,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
                 rb.AddForce(networkKnockbackDirection * knockbackForce, ForceMode.Impulse);
             }
             
-            Debug.Log($"Colisión recibida de red en: {networkCollisionPoint} con daño: {networkCollisionDamage}");
+            Debug.Log($"Network collision received at: {networkCollisionPoint} with damage: {networkCollisionDamage}");
             networkCollisionOccurred = false;
         }
     }

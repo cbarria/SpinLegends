@@ -63,7 +63,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                     joystick = FindFirstObjectByType<DynamicJoystick>();
             }
             if (joystick == null)
-                Debug.LogError("Joystick no encontrado o no asignado en PlayerController. ¿Está en la escena y activo?");
+                Debug.LogError("Joystick not found or not assigned in PlayerController. Is it in the scene and active?");
             else
             {
                 Debug.Log("Joystick asignado correctamente: " + joystick.name);
@@ -262,7 +262,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     void PlayCollisionEffects(Vector3 collisionPoint)
     {
         // Aquí puedes agregar efectos de partículas, sonidos, etc.
-        Debug.Log($"Colisión en punto: {collisionPoint} con daño: {currentHealth}");
+                    Debug.Log($"Collision at point: {collisionPoint} with damage: {currentHealth}");
         
         // Shake de cámara si es el jugador local
         if (photonView.IsMine && CameraShake.Instance != null)
@@ -276,7 +276,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth); // No permitir salud negativa
         
-        Debug.Log($"Jugador {photonView.Owner.NickName} recibió {damage} de daño. Salud: {currentHealth}/{maxHealth}");
+        Debug.Log($"Player {photonView.Owner.NickName} received {damage} damage. Health: {currentHealth}/{maxHealth}");
         
         if (currentHealth <= 0)
         {
