@@ -131,19 +131,19 @@ public class HealthBar : MonoBehaviour
     
     void CreateHealthBarUI()
     {
-        // Crear background
+        // Create background
         GameObject backgroundGO = new GameObject("HealthBarBackground");
         backgroundGO.transform.SetParent(transform, false);
         healthBarBackground = backgroundGO.AddComponent<Image>();
         healthBarBackground.color = new Color(0, 0, 0, 0.8f);
-        
+
         RectTransform bgRect = backgroundGO.GetComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        
-        // Crear fill
+
+        // Create fill
         GameObject fillGO = new GameObject("HealthBarFill");
         fillGO.transform.SetParent(backgroundGO.transform, false);
         healthBarFill = fillGO.AddComponent<Image>();
@@ -151,99 +151,62 @@ public class HealthBar : MonoBehaviour
         healthBarFill.type = Image.Type.Filled;
         healthBarFill.fillMethod = Image.FillMethod.Horizontal;
         healthBarFill.fillAmount = 1f;
-        
+
         RectTransform fillRect = fillGO.GetComponent<RectTransform>();
         fillRect.anchorMin = Vector2.zero;
         fillRect.anchorMax = Vector2.one;
-        fillRect.offsetMin = new Vector2(2, 2);
-        fillRect.offsetMax = new Vector2(-2, -2);
-        
-        // Crear texto
+        fillRect.offsetMin = new Vector2(0.02f, 0.02f);
+        fillRect.offsetMax = new Vector2(-0.02f, -0.02f);
+
+        // Create text
         GameObject textGO = new GameObject("HealthText");
         textGO.transform.SetParent(backgroundGO.transform, false);
         healthText = textGO.AddComponent<TextMeshProUGUI>();
         healthText.text = "100/100";
-        healthText.fontSize = 12;
-        healthText.color = Color.white;
+        healthText.fontSize = 0.2f;
+        healthText.color = Color.black;
         healthText.alignment = TextAlignmentOptions.Center;
-        
+        healthText.textWrappingMode = TextWrappingModes.NoWrap;
+        healthText.fontStyle = FontStyles.Bold;
+        healthText.outlineColor = Color.white;
+        healthText.outlineWidth = 0.2f;
+
         RectTransform textRect = textGO.GetComponent<RectTransform>();
         textRect.anchorMin = Vector2.zero;
         textRect.anchorMax = Vector2.one;
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
-        
-        // Configurar tamaño de la health bar
+
+        // Set health bar size for World Space
         RectTransform mainRect = GetComponent<RectTransform>();
-        mainRect.sizeDelta = new Vector2(100, 15);
-        
-        Debug.Log("HealthBar UI created");
+        mainRect.sizeDelta = new Vector2(1.5f, 0.2f);
     }
     
     void Update()
     {
         if (!isInitialized || targetPlayer == null) return;
-        
-        // Actualizar posición para seguir al jugador
-        if (followPlayer)
+
+        // Move the RectTransform of the health bar to the player's position + offset
+        RectTransform rect = GetComponent<RectTransform>();
+        if (followPlayer && mainCamera != null && rect != null)
         {
-            FollowPlayer();
+            rect.position = targetPlayer.transform.position + offset;
+            rect.LookAt(mainCamera.transform);
+            rect.Rotate(0, 180, 0);
         }
-        
-        // Actualizar salud
+
+        // Update health if changed
         float newHealth = targetPlayer.CurrentHealth;
         if (newHealth != currentHealth)
         {
             currentHealth = newHealth;
             UpdateHealthBar();
         }
-        
-        // Animar pulso si está habilitado
+
+        // Animate pulse if enabled
         if (enablePulseAnimation && currentHealth < maxHealth * mediumHealthThreshold)
         {
             AnimatePulse();
-        }
-    }
-    
-    void FollowPlayer()
-    {
-        if (targetPlayer == null || mainCamera == null) return;
-        
-        // Calcular posición objetivo
-        Vector3 targetPosition = targetPlayer.transform.position + offset;
-        
-        // Convertir posición del mundo a posición de pantalla
-        Vector3 screenPosition = mainCamera.WorldToScreenPoint(targetPosition);
-        
-        // Verificar si está detrás de la cámara
-        if (screenPosition.z < 0)
-        {
-            // Ocultar la health bar si está detrás de la cámara
-            if (healthCanvas != null)
-            {
-                healthCanvas.enabled = false;
-            }
-            return;
-        }
-        else
-        {
-            // Mostrar la health bar
-            if (healthCanvas != null)
-            {
-                healthCanvas.enabled = true;
-            }
-        }
-        
-        // Actualizar posición del canvas
-        if (healthCanvas != null)
-        {
-            Vector3 currentPos = healthCanvas.transform.position;
-            Vector3 newPos = Vector3.Lerp(currentPos, targetPosition, smoothSpeed * Time.deltaTime);
-            healthCanvas.transform.position = newPos;
-            
-            // Hacer que la health bar mire hacia la cámara
-            healthCanvas.transform.LookAt(mainCamera.transform);
-            healthCanvas.transform.Rotate(0, 180, 0); // Rotar para que mire hacia la cámara
         }
     }
     

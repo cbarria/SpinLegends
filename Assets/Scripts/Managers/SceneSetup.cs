@@ -194,7 +194,7 @@ public class SceneSetup : MonoBehaviour
         
         RectTransform roomInfoPanelRect = roomInfoPanel.GetComponent<RectTransform>();
         roomInfoPanelRect.anchorMin = new Vector2(0.02f, 0.85f);
-        roomInfoPanelRect.anchorMax = new Vector2(0.3f, 0.98f);
+        roomInfoPanelRect.anchorMax = new Vector2(0.45f, 0.98f); // Wider panel
         roomInfoPanelRect.offsetMin = Vector2.zero;
         roomInfoPanelRect.offsetMax = Vector2.zero;
         
@@ -217,7 +217,7 @@ public class SceneSetup : MonoBehaviour
         roomNameTextObj.transform.SetParent(roomInfoPanel.transform);
         
         TextMeshProUGUI roomNameText = roomNameTextObj.AddComponent<TextMeshProUGUI>();
-        roomNameText.fontSize = 11;
+        roomNameText.fontSize = 12;
         roomNameText.color = Color.white;
         roomNameText.fontStyle = FontStyles.Bold;
         roomNameText.alignment = TextAlignmentOptions.Left;
@@ -248,7 +248,7 @@ public class SceneSetup : MonoBehaviour
         playerCountTextObj.transform.SetParent(roomInfoPanel.transform);
         
         TextMeshProUGUI playerCountText = playerCountTextObj.AddComponent<TextMeshProUGUI>();
-        playerCountText.fontSize = 11;
+        playerCountText.fontSize = 12;
         playerCountText.color = Color.white;
         playerCountText.fontStyle = FontStyles.Bold;
         playerCountText.alignment = TextAlignmentOptions.Left;

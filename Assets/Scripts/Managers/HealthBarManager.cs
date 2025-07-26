@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Photon.Pun;
+using System.Linq; // Added for FirstOrDefault
 
 public class HealthBarManager : MonoBehaviour
 {
@@ -122,7 +123,7 @@ public class HealthBarManager : MonoBehaviour
         }
         
         // Crear GameObject para la health bar
-        GameObject healthBarGO = new GameObject($"HealthBar_{player.name}");
+        GameObject healthBarGO = new GameObject($"HealthBar_{player.name}", typeof(RectTransform));
         
         // Agregar componente HealthBar
         HealthBar healthBar = healthBarGO.AddComponent<HealthBar>();
@@ -163,6 +164,14 @@ public class HealthBarManager : MonoBehaviour
         playerHealthBars[playerId] = healthBar;
         
         Debug.Log($"Health bar created successfully for {player.name} (Local: {isLocalPlayer})");
+
+        // Find the main World Space Canvas
+        Canvas worldCanvas = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None)
+            .FirstOrDefault(c => c.renderMode == RenderMode.WorldSpace);
+        if (worldCanvas != null)
+        {
+            healthBarGO.transform.SetParent(worldCanvas.transform, false);
+        }
     }
     
     void CleanupDeadPlayers()

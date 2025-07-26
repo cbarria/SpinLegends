@@ -295,7 +295,7 @@ public class MultiplayerUI : MonoBehaviour
             string roomName = PhotonNetwork.CurrentRoom.Name;
             int playerCount = PhotonNetwork.CurrentRoom.PlayerCount;
             int maxPlayers = PhotonNetwork.CurrentRoom.MaxPlayers;
-            return $"En sala: {roomName} ({playerCount}/{maxPlayers} jugadores)";
+            return $"In room: {roomName} ({playerCount}/{maxPlayers})";
         }
         
         return "";
