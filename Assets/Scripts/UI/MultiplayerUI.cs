@@ -24,8 +24,8 @@ public class MultiplayerUI : MonoBehaviour
     public GameObject roomInfoPanel;
     public TextMeshProUGUI roomNameText;
     public TextMeshProUGUI playerCountText;
-    public Image roomIcon; // Nuevo: icono para la sala
-    public Image playerIcon; // Nuevo: icono para jugadores
+    public Image roomIcon; // New: icon for room
+    public Image playerIcon; // New: icon for players
     public Button leaveRoomButton;
     
     [Header("Player List")]
@@ -77,10 +77,10 @@ public class MultiplayerUI : MonoBehaviour
         // Actualizar estado de conexión
         UpdateConnectionUI();
         
-        // Actualizar información de sala
+        // Update room information
         UpdateRoomUI();
         
-        // Actualizar lista de jugadores
+        // Update player list
         UpdatePlayerList();
         
         // Actualizar texto de estado
@@ -113,25 +113,25 @@ public class MultiplayerUI : MonoBehaviour
     {
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
         {
-            // Mostrar información de sala en panel separado
+            // Show room information in separate panel
             if (roomInfoPanel != null)
             {
                 roomInfoPanel.SetActive(true);
                 
-                // Actualizar nombre de sala
+                // Update room name
                 if (roomNameText != null)
                 {
                     roomNameText.text = PhotonNetwork.CurrentRoom.Name;
                 }
                 
-                // Actualizar contador de jugadores
+                // Update player count
                 if (playerCountText != null)
                 {
                     int playerCount = PhotonNetwork.CurrentRoom.PlayerCount;
                     int maxPlayers = PhotonNetwork.CurrentRoom.MaxPlayers;
                     playerCountText.text = $"{playerCount}/{maxPlayers}";
                     
-                    // Cambiar color según el número de jugadores
+                    // Change color based on player count
                     if (playerCount >= maxPlayers)
                     {
                         playerCountText.color = Color.red;
@@ -150,7 +150,7 @@ public class MultiplayerUI : MonoBehaviour
                 }
             }
             
-            // Mostrar botón de salir sala
+            // Show leave room button
             if (leaveRoomButton != null)
             {
                 leaveRoomButton.gameObject.SetActive(true);
@@ -158,7 +158,7 @@ public class MultiplayerUI : MonoBehaviour
         }
         else
         {
-            // Ocultar información de sala si no estamos en una
+            // Hide room information if we're not in a room
             if (roomInfoPanel != null)
             {
                 roomInfoPanel.SetActive(false);
@@ -181,7 +181,7 @@ public class MultiplayerUI : MonoBehaviour
             Destroy(child.gameObject);
         }
         
-        // Agregar jugadores actuales
+        // Add current players
         if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList != null)
         {
             foreach (Player player in PhotonNetwork.PlayerList)
@@ -223,7 +223,7 @@ public class MultiplayerUI : MonoBehaviour
                     statusIcon.sprite = GetStatusIcon("connected");
                 }
             }
-            else if (currentStatus.Contains("Conectando") || currentStatus.Contains("Esperando") || currentStatus.Contains("Buscando"))
+            else if (currentStatus.Contains("Connecting") || currentStatus.Contains("Waiting") || currentStatus.Contains("Searching"))
             {
                 statusText.color = connectingColor;
                 if (statusIcon != null)
@@ -278,16 +278,16 @@ public class MultiplayerUI : MonoBehaviour
         
         if (networkManager != null && networkManager.IsConnecting)
         {
-            return "Conectando al servidor...";
+            return "Connecting to server...";
         }
         
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom)
         {
             if (networkManager != null && networkManager.IsConnecting)
             {
-                return "Esperando para unirse a una sala...";
+                return "Waiting to join a room...";
             }
-            return "Conectado al servidor - Buscando sala...";
+            return "Connected to server - Searching for room...";
         }
         
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
@@ -295,7 +295,7 @@ public class MultiplayerUI : MonoBehaviour
             string roomName = PhotonNetwork.CurrentRoom.Name;
             int playerCount = PhotonNetwork.CurrentRoom.PlayerCount;
             int maxPlayers = PhotonNetwork.CurrentRoom.MaxPlayers;
-            return $"In room: {roomName} ({playerCount}/{maxPlayers})";
+            return $"In room: {roomName}\n({playerCount}/{maxPlayers})";
         }
         
         return "";

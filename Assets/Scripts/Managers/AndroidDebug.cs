@@ -138,12 +138,12 @@ public class AndroidDebug : MonoBehaviour
                 debugInfo += $"Conectado: Sí\n";
                 if (PhotonNetwork.InRoom)
                 {
-                    debugInfo += $"Sala: {PhotonNetwork.CurrentRoom.Name}\n";
-                    debugInfo += $"Jugadores: {PhotonNetwork.CurrentRoom.PlayerCount}\n";
+                                debugInfo += $"Room: {PhotonNetwork.CurrentRoom.Name}\n";
+            debugInfo += $"Players: {PhotonNetwork.CurrentRoom.PlayerCount}\n";
                 }
                 else
                 {
-                    debugInfo += "Sala: No\n";
+                    debugInfo += "Room: No\n";
                 }
             }
             else
@@ -154,7 +154,7 @@ public class AndroidDebug : MonoBehaviour
         
         // Información de jugadores
         PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-        debugInfo += $"Jugadores: {players.Length}\n";
+                    debugInfo += $"Players: {players.Length}\n";
         
         foreach (PlayerController player in players)
         {

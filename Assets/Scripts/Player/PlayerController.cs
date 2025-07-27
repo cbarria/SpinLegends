@@ -239,8 +239,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     void HandlePlayerCollision(Collision collision)
     {
+        if (collision == null || collision.gameObject == null) return;
+        
         PlayerController otherPlayer = collision.gameObject.GetComponent<PlayerController>();
-        if (otherPlayer != null)
+        if (otherPlayer != null && otherPlayer.photonView != null)
         {
             // Calculate damage based on spin speed and collision force
             float collisionForce = collision.relativeVelocity.magnitude;
@@ -252,7 +254,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Aplicar knockback
             Vector3 knockbackDirection = (transform.position - collision.transform.position).normalized;
             float knockbackForce = collisionForce * 0.5f;
-            rb.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            if (rb != null)
+            {
+                rb.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            }
             
             // Efectos de colisión
             PlayCollisionEffects(collision.contacts[0].point);
@@ -321,17 +326,15 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Desactivar el jugador
         gameObject.SetActive(false);
         
-        // Respawn después de un tiempo (opcional)
+        // Respawn después de un tiempo (opcional) - usar Invoke en lugar de coroutine para evitar el error
         if (photonView.IsMine)
         {
-            StartCoroutine(RespawnAfterDelay(3f));
+            Invoke(nameof(RespawnPlayer), 3f);
         }
     }
     
-    System.Collections.IEnumerator RespawnAfterDelay(float delay)
+    void RespawnPlayer()
     {
-        yield return new WaitForSeconds(delay);
-        
         // Respawn en una posición aleatoria
         if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
         {
@@ -340,6 +343,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             if (networkManager != null)
             {
                 networkManager.RespawnPlayer();
+            }
+            else
+            {
+                Debug.LogWarning("NetworkManager no encontrado para respawn");
             }
         }
     }
@@ -375,6 +382,8 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     // Photon Network Synchronization
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
+        if (stream == null) return;
+        
         if (stream.IsWriting)
         {
             // Enviar datos a otros jugadores
@@ -383,7 +392,14 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             stream.SendNext(isSpinning);
             stream.SendNext(currentHealth);
             stream.SendNext(currentSpinSpeed);
-            stream.SendNext(rb.linearVelocity);
+            if (rb != null)
+            {
+                stream.SendNext(rb.linearVelocity);
+            }
+            else
+            {
+                stream.SendNext(Vector3.zero);
+            }
         }
         else
         {
@@ -407,7 +423,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 transform.rotation = Quaternion.Slerp(transform.rotation, networkRotation, deltaTime * rotationInterpolationSpeed);
                 
                 // Interpolación de velocidad para física más suave
-                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, networkVelocity, deltaTime * velocityInterpolationSpeed);
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, networkVelocity, deltaTime * velocityInterpolationSpeed);
+                }
                 
                 // Sincronizar estado de giro
                 if (networkIsSpinning != isSpinning)

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic; // Added for List
 
 public class SceneSetup : MonoBehaviour
 {
@@ -22,9 +23,12 @@ public class SceneSetup : MonoBehaviour
     [ContextMenu("Setup Scene")]
     public void SetupScene()
     {
-        Debug.Log("🔧 Configurando escena...");
+        Debug.Log("🔧 Setting up scene...");
         
-        // Buscar o crear Canvas
+        // Clean up any duplicate UI elements first
+        CleanupDuplicateUI();
+        
+        // Find or create Canvas
         canvas = FindFirstObjectByType<Canvas>();
         if (canvas == null)
         {
@@ -35,15 +39,34 @@ public class SceneSetup : MonoBehaviour
             canvasObj.AddComponent<GraphicRaycaster>();
         }
         
-        // Buscar MultiplayerUI
+        // Find MultiplayerUI
         multiplayerUI = FindFirstObjectByType<MultiplayerUI>();
         if (multiplayerUI == null)
         {
-            GameObject multiplayerUIObj = new GameObject("MultiplayerUI");
-            multiplayerUI = multiplayerUIObj.AddComponent<MultiplayerUI>();
+            // Check if MultiplayerUI already exists by name
+            GameObject existingMultiplayerUI = GameObject.Find("MultiplayerUI");
+            if (existingMultiplayerUI != null)
+            {
+                multiplayerUI = existingMultiplayerUI.GetComponent<MultiplayerUI>();
+                if (multiplayerUI == null)
+                {
+                    multiplayerUI = existingMultiplayerUI.AddComponent<MultiplayerUI>();
+                }
+                Debug.Log("✅ Found existing MultiplayerUI");
+            }
+            else
+            {
+                GameObject multiplayerUIObj = new GameObject("MultiplayerUI");
+                multiplayerUI = multiplayerUIObj.AddComponent<MultiplayerUI>();
+                Debug.Log("✅ Created new MultiplayerUI");
+            }
+        }
+        else
+        {
+            Debug.Log("✅ MultiplayerUI already found");
         }
         
-        // Configurar UI
+        // Configure UI
         SetupStatusUI();
         SetupRoomInfoUI();
         
@@ -126,7 +149,14 @@ public class SceneSetup : MonoBehaviour
     
     void SetupStatusUI()
     {
-        // Crear panel de estado en la esquina superior derecha
+        // Check if StatusPanel already exists
+        if (GameObject.Find("StatusPanel") != null)
+        {
+            Debug.Log("✅ StatusPanel already exists, skipping creation");
+            return;
+        }
+
+        // Create status panel in top-right corner
         GameObject statusPanel = new GameObject("StatusPanel");
         statusPanel.transform.SetParent(canvas.transform);
         
@@ -135,7 +165,7 @@ public class SceneSetup : MonoBehaviour
         statusPanelImage.color = new Color(0, 0, 0, 0.3f); // More transparent
         
         RectTransform statusPanelRect = statusPanel.GetComponent<RectTransform>();
-        statusPanelRect.anchorMin = new Vector2(0.7f, 0.85f);
+        statusPanelRect.anchorMin = new Vector2(0.7f, 0.8f);
         statusPanelRect.anchorMax = new Vector2(0.98f, 0.98f);
         statusPanelRect.offsetMin = Vector2.zero;
         statusPanelRect.offsetMax = Vector2.zero;
@@ -159,19 +189,20 @@ public class SceneSetup : MonoBehaviour
         statusTextObj.transform.SetParent(statusPanel.transform);
         
         TextMeshProUGUI statusText = statusTextObj.AddComponent<TextMeshProUGUI>();
-        statusText.fontSize = 12;
+        statusText.fontSize = 11;
         statusText.color = Color.white;
         statusText.fontStyle = FontStyles.Bold;
         statusText.alignment = TextAlignmentOptions.Left;
         statusText.text = "Connecting...";
+        statusText.textWrappingMode = TextWrappingModes.Normal;
         
         RectTransform statusTextRect = statusText.GetComponent<RectTransform>();
         statusTextRect.anchorMin = new Vector2(0.25f, 0);
         statusTextRect.anchorMax = new Vector2(1f, 1f);
-        statusTextRect.offsetMin = new Vector2(5, 5);
-        statusTextRect.offsetMax = new Vector2(-5, -5);
+        statusTextRect.offsetMin = new Vector2(5, 8);
+        statusTextRect.offsetMax = new Vector2(-5, -8);
         
-        // Asignar al MultiplayerUI
+        // Assign to MultiplayerUI
         if (multiplayerUI != null)
         {
             multiplayerUI.statusPanel = statusPanel;
@@ -184,21 +215,28 @@ public class SceneSetup : MonoBehaviour
     
     void SetupRoomInfoUI()
     {
-        // Crear panel de información de sala en la esquina superior izquierda
+        // Check if RoomInfoPanel already exists
+        if (GameObject.Find("RoomInfoPanel") != null)
+        {
+            Debug.Log("✅ RoomInfoPanel already exists, skipping creation");
+            return;
+        }
+
+        // Create room info panel in top-left corner
         GameObject roomInfoPanel = new GameObject("RoomInfoPanel");
         roomInfoPanel.transform.SetParent(canvas.transform);
         
-        // Configurar panel de información de sala
+        // Configure room info panel
         Image roomInfoPanelImage = roomInfoPanel.AddComponent<Image>();
         roomInfoPanelImage.color = new Color(0, 0, 0, 0.3f); // More transparent
         
         RectTransform roomInfoPanelRect = roomInfoPanel.GetComponent<RectTransform>();
         roomInfoPanelRect.anchorMin = new Vector2(0.02f, 0.85f);
-        roomInfoPanelRect.anchorMax = new Vector2(0.45f, 0.98f); // Wider panel
+        roomInfoPanelRect.anchorMax = new Vector2(0.55f, 0.98f); // Wider panel for long room names
         roomInfoPanelRect.offsetMin = Vector2.zero;
         roomInfoPanelRect.offsetMax = Vector2.zero;
         
-        // Crear icono de sala
+        // Create room icon
         GameObject roomIconObj = new GameObject("RoomIcon");
         roomIconObj.transform.SetParent(roomInfoPanel.transform);
         
@@ -212,24 +250,24 @@ public class SceneSetup : MonoBehaviour
         roomIconRect.offsetMin = new Vector2(5, 5);
         roomIconRect.offsetMax = new Vector2(-5, -5);
         
-        // Crear texto de nombre de sala
+        // Create room name text
         GameObject roomNameTextObj = new GameObject("RoomNameText");
         roomNameTextObj.transform.SetParent(roomInfoPanel.transform);
         
         TextMeshProUGUI roomNameText = roomNameTextObj.AddComponent<TextMeshProUGUI>();
-        roomNameText.fontSize = 12;
+        roomNameText.fontSize = 11;
         roomNameText.color = Color.white;
         roomNameText.fontStyle = FontStyles.Bold;
         roomNameText.alignment = TextAlignmentOptions.Left;
-        roomNameText.text = "Sala";
+        roomNameText.text = "Room";
         
         RectTransform roomNameTextRect = roomNameText.GetComponent<RectTransform>();
         roomNameTextRect.anchorMin = new Vector2(0.2f, 0.5f);
         roomNameTextRect.anchorMax = new Vector2(1f, 1f);
-        roomNameTextRect.offsetMin = new Vector2(5, 5);
-        roomNameTextRect.offsetMax = new Vector2(-5, -5);
+        roomNameTextRect.offsetMin = new Vector2(5, 8);
+        roomNameTextRect.offsetMax = new Vector2(-5, -8);
         
-        // Crear icono de jugadores
+        // Create player icon
         GameObject playerIconObj = new GameObject("PlayerIcon");
         playerIconObj.transform.SetParent(roomInfoPanel.transform);
         
@@ -243,12 +281,12 @@ public class SceneSetup : MonoBehaviour
         playerIconRect.offsetMin = new Vector2(5, 5);
         playerIconRect.offsetMax = new Vector2(-5, -5);
         
-        // Crear texto de contador de jugadores
+        // Create player count text
         GameObject playerCountTextObj = new GameObject("PlayerCountText");
         playerCountTextObj.transform.SetParent(roomInfoPanel.transform);
         
         TextMeshProUGUI playerCountText = playerCountTextObj.AddComponent<TextMeshProUGUI>();
-        playerCountText.fontSize = 12;
+        playerCountText.fontSize = 11;
         playerCountText.color = Color.white;
         playerCountText.fontStyle = FontStyles.Bold;
         playerCountText.alignment = TextAlignmentOptions.Left;
@@ -257,10 +295,10 @@ public class SceneSetup : MonoBehaviour
         RectTransform playerCountTextRect = playerCountText.GetComponent<RectTransform>();
         playerCountTextRect.anchorMin = new Vector2(0.2f, 0);
         playerCountTextRect.anchorMax = new Vector2(1f, 0.5f);
-        playerCountTextRect.offsetMin = new Vector2(5, 5);
-        playerCountTextRect.offsetMax = new Vector2(-5, -5);
+        playerCountTextRect.offsetMin = new Vector2(5, 8);
+        playerCountTextRect.offsetMax = new Vector2(-5, -8);
         
-        // Asignar al MultiplayerUI
+        // Assign to MultiplayerUI
         if (multiplayerUI != null)
         {
             multiplayerUI.roomInfoPanel = roomInfoPanel;
@@ -271,5 +309,54 @@ public class SceneSetup : MonoBehaviour
         }
         
         Debug.Log("✅ Room info panel created in top-left corner");
+    }
+    
+    void CleanupDuplicateUI()
+    {
+        // Find all StatusPanel objects
+        GameObject[] statusPanels = GameObject.FindGameObjectsWithTag("Untagged");
+        List<GameObject> duplicateStatusPanels = new List<GameObject>();
+        List<GameObject> duplicateRoomInfoPanels = new List<GameObject>();
+        List<GameObject> duplicateMultiplayerUIs = new List<GameObject>();
+        
+        foreach (GameObject obj in statusPanels)
+        {
+            if (obj.name == "StatusPanel")
+            {
+                duplicateStatusPanels.Add(obj);
+            }
+            else if (obj.name == "RoomInfoPanel")
+            {
+                duplicateRoomInfoPanels.Add(obj);
+            }
+            else if (obj.name == "MultiplayerUI")
+            {
+                duplicateMultiplayerUIs.Add(obj);
+            }
+        }
+        
+        // Keep only the first instance of each, destroy the rest
+        for (int i = 1; i < duplicateStatusPanels.Count; i++)
+        {
+            Debug.Log($"🗑️ Destroying duplicate StatusPanel {i}");
+            DestroyImmediate(duplicateStatusPanels[i]);
+        }
+        
+        for (int i = 1; i < duplicateRoomInfoPanels.Count; i++)
+        {
+            Debug.Log($"🗑️ Destroying duplicate RoomInfoPanel {i}");
+            DestroyImmediate(duplicateRoomInfoPanels[i]);
+        }
+        
+        for (int i = 1; i < duplicateMultiplayerUIs.Count; i++)
+        {
+            Debug.Log($"🗑️ Destroying duplicate MultiplayerUI {i}");
+            DestroyImmediate(duplicateMultiplayerUIs[i]);
+        }
+        
+        if (duplicateStatusPanels.Count > 1 || duplicateRoomInfoPanels.Count > 1 || duplicateMultiplayerUIs.Count > 1)
+        {
+            Debug.Log("🧹 Cleaned up duplicate UI elements");
+        }
     }
 } 

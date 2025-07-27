@@ -219,12 +219,24 @@ public class JoystickInputTester : MonoBehaviour
         
         if (!Input.touchSupported)
         {
-            Debug.LogError("❌ Touch no soportado en este dispositivo!");
+            Debug.LogWarning("⚠️ Touch no soportado en este dispositivo - usando input de teclado/mouse como fallback");
+            Debug.Log("💡 Para testear el joystick, usa las teclas WASD o las flechas del teclado");
             return;
         }
         
         Debug.Log("✅ Touch soportado");
         Debug.Log($"Touch count: {Input.touchCount}");
+        
+        // Verificar si hay un EventSystem activo
+        EventSystem currentEventSystem = FindFirstObjectByType<EventSystem>();
+        if (currentEventSystem == null)
+        {
+            Debug.LogWarning("⚠️ No hay EventSystem en la escena - el touch input puede no funcionar correctamente");
+        }
+        else
+        {
+            Debug.Log($"✅ EventSystem encontrado: {currentEventSystem.name}");
+        }
         
         // Simular un test de touch
         Debug.Log("💡 Para testear el joystick, toca la pantalla en el área del joystick");
