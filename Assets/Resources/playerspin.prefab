@@ -270,6 +270,8 @@ MonoBehaviour:
   playerLayer:
     serializedVersion: 2
     m_Bits: 1
+  angularImpactScale: 0.15
+  collisionCooldown: 0.15
   collisionEffectPrefab: {fileID: 0}
   collisionSound: {fileID: 0}
 --- !u!4 &4258389638990132674 stripped

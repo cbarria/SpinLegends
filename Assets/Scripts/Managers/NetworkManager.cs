@@ -2,8 +2,9 @@ using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
+using ExitGames.Client.Photon; // for EventData and SendOptions
 
-public class NetworkManager : MonoBehaviourPunCallbacks
+public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
 {
     public static NetworkManager Instance;
     
@@ -13,6 +14,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     
     [Header("Player Prefab")]
     public GameObject playerPrefab;
+    public string playerPrefabName = "playerspin"; // nombre consistente para todos los clientes (Resources)
     
     [Header("Spawn Points")]
     public Transform[] spawnPoints;
@@ -20,10 +22,17 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     private bool isConnecting = false;
     private float joinRoomTimeout = 5f; // Reducir a 5 segundos
     private float joinRoomTimer = 0f;
+
+    public float JoinRoomTimeout => joinRoomTimeout;
+    public float CurrentJoinTimer => joinRoomTimer;
     
     public bool IsConnecting => isConnecting;
     private List<PlayerController> networkPlayers = new List<PlayerController>();
     private PlayerSpawnManager spawnManager;
+
+    private PhotonView pv; // para RPC
+
+    private const byte SpawnRequestEventCode = 101;
     
     void Awake()
     {
@@ -36,32 +45,37 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         {
             Destroy(gameObject);
         }
+        // Asegurar PhotonView para RPCs
+        pv = GetComponent<PhotonView>();
+        if (pv == null) pv = gameObject.AddComponent<PhotonView>();
+    }
+
+    void OnEnable()
+    {
+        PhotonNetwork.AddCallbackTarget(this);
+    }
+
+    void OnDisable()
+    {
+        PhotonNetwork.RemoveCallbackTarget(this);
     }
     
     void Start()
     {
-        // Configurar Photon
         PhotonNetwork.AutomaticallySyncScene = true;
-        
-        // Configurar spawn manager
         SetupSpawnManager();
-        
         ConnectToServer();
     }
     
     void Update()
     {
-        // Timeout para unirse a sala
         if (PhotonNetwork.IsConnected && !PhotonNetwork.InRoom && !isConnecting)
         {
             joinRoomTimer += Time.deltaTime;
-            
-            // Log cada segundo para debug
             if (Mathf.FloorToInt(joinRoomTimer) % 1 == 0 && Time.frameCount % 60 == 0)
             {
                 Debug.Log($"Waiting to join room... {joinRoomTimer:F1}s / {joinRoomTimeout}s");
             }
-            
             if (joinRoomTimer >= joinRoomTimeout)
             {
                 Debug.Log("Join room timeout. Creating new room...");
@@ -74,18 +88,15 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     public void ConnectToServer()
     {
         if (PhotonNetwork.IsConnected) return;
-        
         isConnecting = true;
         PhotonNetwork.GameVersion = gameVersion;
         PhotonNetwork.ConnectUsingSettings();
-        
         Debug.Log("Connecting to Photon...");
     }
     
     public void JoinRandomRoom()
     {
         if (!PhotonNetwork.IsConnected) return;
-        
         PhotonNetwork.JoinRandomRoom();
         Debug.Log("Joining random room...");
         joinRoomTimer = 0f; // Reset timer
@@ -94,14 +105,12 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     public void CreateRoom(string roomName = null)
     {
         if (!PhotonNetwork.IsConnected) return;
-        
         RoomOptions roomOptions = new RoomOptions
         {
             MaxPlayers = maxPlayersPerRoom,
             IsVisible = true,
             IsOpen = true
         };
-        
         string roomNameToUse = roomName ?? "BeybladeRoom_" + Random.Range(1000, 9999);
         PhotonNetwork.CreateRoom(roomNameToUse, roomOptions);
         Debug.Log("Creating room: " + roomNameToUse);
@@ -120,8 +129,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("Connected to Photon server!");
         isConnecting = false;
-        
-        // Unirse automáticamente a una sala
         JoinRandomRoom();
     }
     
@@ -135,106 +142,160 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("Joined room: " + PhotonNetwork.CurrentRoom.Name);
         Debug.Log("Players in room: " + PhotonNetwork.CurrentRoom.PlayerCount);
-        
-        // Spawn del jugador local
-        Debug.Log("Attempting to spawn player...");
-        SpawnPlayer();
+        var views = FindObjectsByType<PhotonView>(FindObjectsSortMode.None);
+        Debug.Log($"🔎 Found {views.Length} PhotonViews in scene on join");
+        foreach (var v in views)
+        {
+            Debug.Log($"   PV name={v.gameObject.name} ViewID={v.ViewID} IsMine={v.IsMine} Owner={v.OwnerActorNr}");
+        }
+        if (PhotonNetwork.IsMasterClient && spawnManager != null)
+        {
+            foreach (var kv in PhotonNetwork.CurrentRoom.Players)
+            {
+                int actor = kv.Value.ActorNumber;
+                spawnManager.SpawnPlayerForActor(actor);
+            }
+        }
+        Invoke(nameof(RequestSpawnIfMissing), 2f);
+        Invoke(nameof(VerifyPlayersVisible), 2.5f);
+    }
+
+    void RequestSpawnIfMissing()
+    {
+        int myActor = PhotonNetwork.LocalPlayer.ActorNumber;
+        bool haveMine = false;
+        var pcs = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var p in pcs)
+        {
+            if (p != null && p.photonView != null && p.photonView.OwnerActorNr == myActor)
+            {
+                haveMine = true; break;
+            }
+        }
+        if (!haveMine)
+        {
+            Debug.LogWarning("⚠️ No llegó mi RoomObject todavía. Solicitando al Master...");
+            StartCoroutine(SendSpawnRequestWhenViewReady(myActor));
+        }
+    }
+
+    System.Collections.IEnumerator SendSpawnRequestWhenViewReady(int actor)
+    {
+        float timeout = 2f;
+        float elapsed = 0f;
+        while ((pv == null || pv.ViewID == 0) && elapsed < timeout)
+        {
+            yield return null;
+            elapsed += Time.deltaTime;
+        }
+        if (pv != null && pv.ViewID != 0)
+        {
+            pv.RPC("RPC_RequestSpawnForActor", RpcTarget.MasterClient, actor);
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ PhotonView aún sin ViewID, usando RaiseEvent fallback para solicitar spawn.");
+            var content = new object[] { actor };
+            var options = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+            PhotonNetwork.RaiseEvent(SpawnRequestEventCode, content, options, SendOptions.SendReliable);
+        }
+    }
+
+    [PunRPC]
+    void RPC_RequestSpawnForActor(int actorNumber, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (spawnManager != null)
+        {
+            spawnManager.SpawnPlayerForActor(actorNumber);
+        }
+    }
+
+    public void OnEvent(EventData photonEvent)
+    {
+        if (photonEvent.Code == SpawnRequestEventCode && PhotonNetwork.IsMasterClient)
+        {
+            var data = photonEvent.CustomData as object[];
+            if (data != null && data.Length > 0 && data[0] is int actorNumber)
+            {
+                if (spawnManager != null)
+                {
+                    spawnManager.SpawnPlayerForActor(actorNumber);
+                }
+            }
+        }
+    }
+    
+    void VerifyPlayersVisible()
+    {
+        int expected = PhotonNetwork.CurrentRoom.PlayerCount;
+        int actual = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
+        if (actual < expected)
+        {
+            Debug.LogWarning($"⚠️ Late-join visibility mismatch: expected {expected} players but see {actual}. PrefabName='{playerPrefabName}'. Asegúrate de Resources.");
+        }
     }
     
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         Debug.Log("New player joined: " + newPlayer.NickName);
+        if (PhotonNetwork.IsMasterClient && spawnManager != null)
+        {
+            spawnManager.SpawnPlayerForActor(newPlayer.ActorNumber);
+        }
     }
     
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log("Player left: " + otherPlayer.NickName);
+        if (PhotonNetwork.IsMasterClient)
+        {
+            var pcs = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+            foreach (var p in pcs)
+            {
+                if (p != null && p.photonView != null && p.photonView.OwnerActorNr == otherPlayer.ActorNumber)
+                {
+                    PhotonNetwork.Destroy(p.gameObject);
+                }
+            }
+        }
     }
     
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         Debug.LogError("Failed to create room: " + message);
-        // Try to join a random room instead
         JoinRandomRoom();
     }
-    
-
     
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         Debug.LogError("Failed to join room: " + message);
-        // Try to create a new room instead
         CreateRoom();
     }
     
     void SetupSpawnManager()
     {
-        // Crear spawn manager si no existe
         if (spawnManager == null)
         {
             GameObject spawnManagerObj = new GameObject("PlayerSpawnManager");
             spawnManager = spawnManagerObj.AddComponent<PlayerSpawnManager>();
             spawnManager.spawnPoints = spawnPoints;
-            spawnManager.playerPrefabName = playerPrefab != null ? playerPrefab.name : "playerspin";
+            spawnManager.playerPrefabName = playerPrefabName;
         }
-    }
-    
-    public void SpawnPlayer()
-    {
-        Debug.Log("SpawnPlayer called");
-        
-        if (spawnManager == null)
+        else
         {
-            Debug.Log("SpawnManager is null, setting up...");
-            SetupSpawnManager();
-        }
-        
-        // Usar spawn manager para spawn del jugador
-        int playerId = PhotonNetwork.LocalPlayer.ActorNumber;
-        Debug.Log($"Spawning player with ID: {playerId}");
-        spawnManager.SpawnPlayer(playerId);
-        
-        // Buscar el jugador spawneado y configurarlo
-        PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-        Debug.Log($"Found {players.Length} PlayerController instances");
-        
-        foreach (PlayerController playerController in players)
-        {
-            Debug.Log($"Checking player: {playerController.name}, IsMine: {playerController.photonView.IsMine}");
-            if (playerController.photonView.IsMine && !networkPlayers.Contains(playerController))
-            {
-                Debug.Log("Found local player, setting up...");
-                networkPlayers.Add(playerController);
-                SetupLocalPlayer(playerController);
-                break;
-            }
-        }
-    }
-    
-    void SetupLocalPlayer(PlayerController playerController)
-    {
-        // Configurar cámara en tercera persona
-        SetupThirdPersonCamera(playerController);
-        
-        // Configurar UI para el jugador local
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.SetLocalPlayer(playerController);
+            spawnManager.playerPrefabName = playerPrefabName;
         }
     }
     
     void SetupThirdPersonCamera(PlayerController playerController)
     {
-        // Buscar o crear ThirdPersonCamera
         ThirdPersonCamera thirdPersonCamera = Camera.main.GetComponent<ThirdPersonCamera>();
         if (thirdPersonCamera == null)
         {
             thirdPersonCamera = Camera.main.gameObject.AddComponent<ThirdPersonCamera>();
         }
-        
-        // Configurar la cámara para seguir al jugador
         thirdPersonCamera.SetTarget(playerController.transform);
-        
         Debug.Log("Third person camera configured for player: " + playerController.name);
     }
     
@@ -260,12 +321,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     
     public void RespawnPlayer()
     {
-        Debug.Log("RespawnPlayer called");
-        
-        // Limpiar jugadores muertos
-        networkPlayers.RemoveAll(p => p == null || !p.gameObject.activeInHierarchy);
-        
-        // Spawn nuevo jugador
-        SpawnPlayer();
+        Debug.Log("RespawnPlayer legacy call ignored: Master handles respawn.");
     }
 } 

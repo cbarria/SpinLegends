@@ -6,31 +6,36 @@ using Photon.Pun;
 public class AndroidDebug : MonoBehaviour
 {
     [Header("Debug UI")]
-    public TextMeshProUGUI debugText;
-    public GameObject debugPanel;
+    [SerializeField] private TextMeshProUGUI debugText;
     
     [Header("Debug Settings")]
-    public bool showDebugInfo = false; // Cambiado a false por defecto
+    public bool showDebugInfo = false;
     public bool showFPS = true;
     public bool showInputInfo = true;
     public bool showNetworkInfo = true;
+    public bool showPhotonViews = true;
+    public bool hideLeftHud = true; // oculta HUD duplicado si existe
     
-    private float deltaTime = 0.0f;
     private int frameCount = 0;
     private float timeElapsed = 0f;
     private float fps = 0f;
+
+    private GameObject overlayPanel;
     
     void Start()
     {
-        // Solo mostrar debug en Android si está habilitado
+        if (hideLeftHud)
+        {
+            // Intento best-effort: buscar un canvas/objeto típico de HUD izquierdo por nombre
+            var leftHud = GameObject.Find("HUD_Left");
+            if (leftHud != null) leftHud.SetActive(false);
+        }
         if (Application.platform != RuntimePlatform.Android || !showDebugInfo)
         {
-            if (debugPanel != null)
-                debugPanel.SetActive(false);
+            if (overlayPanel != null)
+                overlayPanel.SetActive(false);
             return;
         }
-        
-        // Crear UI de debug si no existe
         if (debugText == null)
         {
             CreateDebugUI();
@@ -39,52 +44,104 @@ public class AndroidDebug : MonoBehaviour
     
     void CreateDebugUI()
     {
-        // Crear panel de debug
-        if (debugPanel == null)
+        if (overlayPanel != null) return;
+        GameObject panel = new GameObject("DebugPanel");
+        var canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null)
         {
-            GameObject panel = new GameObject("DebugPanel");
-            panel.transform.SetParent(FindFirstObjectByType<Canvas>()?.transform);
-            
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = new Color(0, 0, 0, 0.7f);
-            
-            RectTransform panelRect = panel.GetComponent<RectTransform>();
-            // Cambiar posición a esquina superior derecha para no tapar el joystick
-            panelRect.anchorMin = new Vector2(0.6f, 0.7f);
-            panelRect.anchorMax = new Vector2(1f, 1f);
-            panelRect.offsetMin = Vector2.zero;
-            panelRect.offsetMax = Vector2.zero;
-            
-            debugPanel = panel;
+            var canvasGO = new GameObject("WorldCanvas");
+            canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGO.AddComponent<CanvasScaler>();
+            canvasGO.AddComponent<GraphicRaycaster>();
         }
-        
-        // Crear texto de debug
+        panel.transform.SetParent(canvas.transform, false);
+        Image panelImage = panel.AddComponent<Image>();
+        panelImage.color = new Color(0, 0, 0, 0.6f);
+        panelImage.raycastTarget = false;
+        RectTransform panelRect = panel.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.55f, 0.55f);
+        panelRect.anchorMax = new Vector2(1f, 1f);
+        panelRect.offsetMin = Vector2.zero;
+        panelRect.offsetMax = Vector2.zero;
+        overlayPanel = panel;
+
+        GameObject btnObj = new GameObject("ToggleButton");
+        btnObj.transform.SetParent(panel.transform, false);
+        var btnImage = btnObj.AddComponent<Image>();
+        btnImage.color = new Color(1f, 1f, 1f, 0.2f);
+        btnImage.raycastTarget = true;
+        var btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(ToggleDebug);
+        var btnRect = btnObj.GetComponent<RectTransform>();
+        btnRect.anchorMin = new Vector2(0f, 1f);
+        btnRect.anchorMax = new Vector2(0f, 1f);
+        btnRect.pivot = new Vector2(0f, 1f);
+        btnRect.sizeDelta = new Vector2(80, 32);
+        btnRect.anchoredPosition = new Vector2(8, -8);
+        var btnTextGO = new GameObject("BtnText");
+        btnTextGO.transform.SetParent(btnObj.transform, false);
+        var btnText = btnTextGO.AddComponent<TextMeshProUGUI>();
+        btnText.text = "DEBUG";
+        btnText.alignment = TextAlignmentOptions.Center;
+        btnText.fontSize = 18;
+        btnText.raycastTarget = false;
+        var btnTextRect = btnText.GetComponent<RectTransform>();
+        btnTextRect.anchorMin = Vector2.zero;
+        btnTextRect.anchorMax = Vector2.one;
+        btnTextRect.offsetMin = Vector2.zero;
+        btnTextRect.offsetMax = Vector2.zero;
+
+        GameObject scrollObj = new GameObject("ScrollView");
+        scrollObj.transform.SetParent(panel.transform, false);
+        var scrollRect = scrollObj.AddComponent<ScrollRect>();
+        scrollRect.horizontal = false;
+        var cg = scrollObj.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        cg.interactable = false;
+        var maskImage = scrollObj.AddComponent<Image>();
+        maskImage.color = new Color(0, 0, 0, 0f);
+        maskImage.raycastTarget = false;
+        var mask = scrollObj.AddComponent<Mask>();
+        mask.showMaskGraphic = false;
+        var scrollRectRT = scrollObj.GetComponent<RectTransform>();
+        scrollRectRT.anchorMin = new Vector2(0f, 0f);
+        scrollRectRT.anchorMax = new Vector2(1f, 1f);
+        scrollRectRT.offsetMin = new Vector2(8, 8);
+        scrollRectRT.offsetMax = new Vector2(-8, -48);
+
+        GameObject content = new GameObject("Content");
+        content.transform.SetParent(scrollObj.transform, false);
+        var contentRT = content.AddComponent<RectTransform>();
+        contentRT.anchorMin = new Vector2(0f, 1f);
+        contentRT.anchorMax = new Vector2(1f, 1f);
+        contentRT.pivot = new Vector2(0.5f, 1f);
+        contentRT.sizeDelta = new Vector2(0, 1200);
+
         GameObject textObj = new GameObject("DebugText");
-        textObj.transform.SetParent(debugPanel.transform);
-        
+        textObj.transform.SetParent(content.transform, false);
         debugText = textObj.AddComponent<TextMeshProUGUI>();
-        debugText.fontSize = 10; // Reducir tamaño de fuente
+        debugText.fontSize = 22;
+        debugText.textWrappingMode = TextWrappingModes.NoWrap;
         debugText.color = Color.white;
         debugText.text = "Debug Info";
-        
-        RectTransform textRect = debugText.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(5, 5);
-        textRect.offsetMax = new Vector2(-5, -5);
+        debugText.raycastTarget = false;
+        var textRect = debugText.GetComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0f, 1f);
+        textRect.anchorMax = new Vector2(1f, 1f);
+        textRect.pivot = new Vector2(0.5f, 1f);
+        textRect.sizeDelta = new Vector2(0, 1200);
+
+        scrollRect.content = contentRT;
     }
     
     void Update()
     {
         if (!showDebugInfo || debugText == null) return;
-        
-        // Calcular FPS
         if (showFPS)
         {
-            deltaTime += Time.deltaTime;
             timeElapsed += Time.deltaTime;
             frameCount++;
-            
             if (timeElapsed >= 0.5f)
             {
                 fps = frameCount / timeElapsed;
@@ -92,138 +149,82 @@ public class AndroidDebug : MonoBehaviour
                 timeElapsed = 0f;
             }
         }
-        
-        // Actualizar texto de debug
         UpdateDebugText();
     }
     
     void UpdateDebugText()
     {
-        string debugInfo = "";
-        
+        System.Text.StringBuilder sb = new System.Text.StringBuilder(2048);
         if (showFPS)
         {
-            debugInfo += $"FPS: {fps:F1}\n";
+            sb.AppendLine($"FPS: {fps:F1}");
         }
-        
         if (showInputInfo)
         {
-            // Información del joystick
-            Joystick joystick = FindFirstObjectByType<FixedJoystick>();
-            if (joystick == null)
-                joystick = FindFirstObjectByType<FloatingJoystick>();
-            if (joystick == null)
-                joystick = FindFirstObjectByType<VariableJoystick>();
-            if (joystick == null)
-                joystick = FindFirstObjectByType<DynamicJoystick>();
-                
+            Joystick joystick = FindFirstObjectByType<Joystick>();
             if (joystick != null)
-            {
-                debugInfo += $"Joystick: ({joystick.Horizontal:F2}, {joystick.Vertical:F2})\n";
-            }
+                sb.AppendLine($"Joystick: ({joystick.Horizontal:F2}, {joystick.Vertical:F2})");
             else
-            {
-                debugInfo += "Joystick: No encontrado\n";
-            }
-            
-            // Información del mouse
-            debugInfo += $"Mouse: ({Input.mousePosition.x:F0}, {Input.mousePosition.y:F0})\n";
+                sb.AppendLine("Joystick: No encontrado");
         }
-        
         if (showNetworkInfo)
         {
-            // Información de red
             if (PhotonNetwork.IsConnected)
             {
-                debugInfo += $"Conectado: Sí\n";
+                sb.AppendLine("Conectado: Sí");
                 if (PhotonNetwork.InRoom)
                 {
-                                debugInfo += $"Room: {PhotonNetwork.CurrentRoom.Name}\n";
-            debugInfo += $"Players: {PhotonNetwork.CurrentRoom.PlayerCount}\n";
+                    sb.AppendLine($"Room: {PhotonNetwork.CurrentRoom.Name}");
+                    sb.AppendLine($"Players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+                    // Scoreboard
+                    var scoreMgr = FindFirstObjectByType<ScoreManager>();
+                    if (scoreMgr != null)
+                    {
+                        sb.AppendLine("Scores:");
+                        foreach (var p in PhotonNetwork.PlayerList)
+                        {
+                            sb.AppendLine($" - {p.NickName} ({p.ActorNumber}): {scoreMgr.GetScore(p.ActorNumber)}");
+                        }
+                    }
                 }
-                else
-                {
-                    debugInfo += "Room: No\n";
-                }
+                else sb.AppendLine("Room: No");
             }
-            else
+            else sb.AppendLine("Conectado: No");
+        }
+        var players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        sb.AppendLine($"Players: {players.Length}");
+        foreach (var p in players)
+        {
+            sb.AppendLine($" - {p.name} IsMine={p.photonView.IsMine} Pos={p.transform.position}");
+        }
+        if (showPhotonViews)
+        {
+            var views = FindObjectsByType<PhotonView>(FindObjectsSortMode.None);
+            sb.AppendLine($"PhotonViews: {views.Length}");
+            foreach (var v in views)
             {
-                debugInfo += "Conectado: No\n";
+                sb.AppendLine($" * {v.gameObject.name} VID={v.ViewID} IsMine={v.IsMine} Owner={v.OwnerActorNr}");
             }
         }
-        
-        // Información de jugadores
-        PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-                    debugInfo += $"Players: {players.Length}\n";
-        
-        foreach (PlayerController player in players)
-        {
-            if (player.photonView.IsMine)
-            {
-                debugInfo += $"Mi posición: {player.transform.position}\n";
-                debugInfo += $"Mi salud: {player.CurrentHealth:F0}\n";
-                break;
-            }
-        }
-        
-        debugText.text = debugInfo;
+        debugText.text = sb.ToString();
     }
     
-    public void LogError(string error)
-    {
-        if (debugText != null)
-        {
-            debugText.text += $"\nERROR: {error}";
-        }
-        Debug.LogError(error);
-    }
-    
-    public void LogWarning(string warning)
-    {
-        if (debugText != null)
-        {
-            debugText.text += $"\nWARNING: {warning}";
-        }
-        Debug.LogWarning(warning);
-    }
-    
-    // Método para activar el debug
     public void EnableDebug()
     {
         showDebugInfo = true;
         if (Application.platform == RuntimePlatform.Android)
         {
-            if (debugPanel == null)
-            {
-                CreateDebugUI();
-            }
-            if (debugPanel != null)
-            {
-                debugPanel.SetActive(true);
-            }
+            if (overlayPanel == null) CreateDebugUI();
+            if (overlayPanel != null) overlayPanel.SetActive(true);
         }
     }
-    
-    // Método para desactivar el debug
     public void DisableDebug()
     {
         showDebugInfo = false;
-        if (debugPanel != null)
-        {
-            debugPanel.SetActive(false);
-        }
+        if (overlayPanel != null) overlayPanel.SetActive(false);
     }
-    
-    // Método para alternar el debug
     public void ToggleDebug()
     {
-        if (showDebugInfo)
-        {
-            DisableDebug();
-        }
-        else
-        {
-            EnableDebug();
-        }
+        if (showDebugInfo) DisableDebug(); else EnableDebug();
     }
 } 

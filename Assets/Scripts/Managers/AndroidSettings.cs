@@ -12,6 +12,17 @@ public class AndroidSettings : MonoBehaviour
     [Header("Console Settings")]
     public bool enableLargeConsoleText = true;
     
+    [Header("Joystick Focus Settings")]
+    public bool enableJoystickFocusFix = true;
+    public float joystickInitializationDelay = 0.5f;
+    
+    [Header("Touch Input Settings")]
+    public bool enableTouchInputFix = true;
+    public bool forceTouchFocus = true;
+    
+    private JoystickFocusManager joystickFocusManager;
+    private AndroidTouchInput androidTouchInput;
+    
     void Awake()
     {
         #if UNITY_ANDROID
@@ -23,22 +34,31 @@ public class AndroidSettings : MonoBehaviour
     {
         Debug.Log("🔧 Configurando para Android...");
         
-        // Configurar DPI para mejor calidad
-        if (enableHighDPI)
-        {
-            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, true);
-        }
+        // No forzar resolución: evita zoom/estirado en dispositivos
+        // if (enableHighDPI) { Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, true); }
         
-        // Configurar orientación
+        // Orientación
         Screen.orientation = ScreenOrientation.LandscapeLeft;
         
-        // Configurar UI scaling
-        ConfigureUIScaling();
+        // UI scaling opcional: desactivado por defecto para no interferir con Canvas/Joystick
+        // ConfigureUIScaling();
         
-        // Configurar console para Android
+        // Consola Android (opcional)
         if (enableLargeConsoleText)
         {
             ConfigureConsoleForAndroid();
+        }
+        
+        // Joystick focus manager
+        if (enableJoystickFocusFix)
+        {
+            SetupJoystickFocusManager();
+        }
+        
+        // Input táctil Android
+        if (enableTouchInputFix)
+        {
+            SetupAndroidTouchInput();
         }
         
         Debug.Log("✅ Configuración de Android completada");
@@ -46,71 +66,63 @@ public class AndroidSettings : MonoBehaviour
     
     void ConfigureUIScaling()
     {
-        // Buscar todos los textos en la escena y escalarlos
+        // Deshabilitado por defecto: deja la UI como está diseñada
         TextMeshProUGUI[] allTexts = FindObjectsByType<TextMeshProUGUI>(FindObjectsSortMode.None);
         foreach (TextMeshProUGUI text in allTexts)
         {
             if (text != null)
             {
-                // Escalar el tamaño de fuente
                 text.fontSize = Mathf.RoundToInt(text.fontSize * androidTextScale);
-                
-                // Hacer el texto más legible
                 text.fontStyle = FontStyles.Bold;
                 text.enableAutoSizing = false;
-                
-                // Configurar para mejor legibilidad
                 text.textWrappingMode = TextWrappingModes.Normal;
                 text.richText = true;
             }
         }
-        
-        // Buscar todos los botones y escalarlos
         Button[] allButtons = FindObjectsByType<Button>(FindObjectsSortMode.None);
         foreach (Button button in allButtons)
         {
             if (button != null)
             {
-                RectTransform rectTransform = button.GetComponent<RectTransform>();
-                if (rectTransform != null)
+                var rt = button.GetComponent<RectTransform>();
+                if (rt != null)
                 {
-                    // Escalar el botón
-                    rectTransform.localScale = Vector3.one * androidButtonScale;
-                }
-                
-                // Escalar el texto del botón
-                TextMeshProUGUI buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
-                if (buttonText != null)
-                {
-                    buttonText.fontSize = Mathf.RoundToInt(buttonText.fontSize * androidTextScale);
-                    buttonText.fontStyle = FontStyles.Bold;
+                    rt.localScale = Vector3.one * androidButtonScale;
                 }
             }
         }
-        
-        Debug.Log($"✅ Escalado UI completado: {allTexts.Length} textos, {allButtons.Length} botones");
     }
     
     void ConfigureConsoleForAndroid()
     {
-        // Configurar el tamaño de fuente de la consola para Android
-        #if UNITY_EDITOR
-        // En el editor, podemos configurar las preferencias
-        UnityEditor.EditorPrefs.SetInt("ConsoleFontSize", 16); // Tamaño más grande para Android
-        #endif
-        
-        Debug.Log("✅ Configuración de consola para Android aplicada");
+        // Placeholder para ajustes de consola si se usan
     }
     
-    [ContextMenu("Apply Android Settings")]
-    public void ApplyAndroidSettings()
+    void SetupJoystickFocusManager()
     {
-        ConfigureForAndroid();
+        var existing = FindFirstObjectByType<JoystickFocusManager>();
+        if (existing == null)
+        {
+            GameObject go = new GameObject("JoystickFocusManager");
+            joystickFocusManager = go.AddComponent<JoystickFocusManager>();
+            joystickFocusManager.initializationDelay = joystickInitializationDelay;
+            joystickFocusManager.enableDebugLogs = true;
+            joystickFocusManager.autoFindJoysticks = true;
+            joystickFocusManager.forceJoystickFocus = true;
+        }
     }
     
-    [ContextMenu("Scale All UI Elements")]
-    public void ScaleAllUIElements()
+    void SetupAndroidTouchInput()
     {
-        ConfigureUIScaling();
+        var existing = FindFirstObjectByType<AndroidTouchInput>();
+        if (existing == null)
+        {
+            GameObject go = new GameObject("AndroidTouchInput");
+            androidTouchInput = go.AddComponent<AndroidTouchInput>();
+            androidTouchInput.enableTouchDebug = false;
+            androidTouchInput.forceTouchFocus = true;
+            androidTouchInput.autoCreateEventSystem = true;
+            androidTouchInput.ensureGraphicRaycaster = true;
+        }
     }
 } 

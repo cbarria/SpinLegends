@@ -34,8 +34,16 @@ public class HealthBarManager : MonoBehaviour
     
     void Update()
     {
-        // Verificar si hay nuevos jugadores y crear health bars para ellos
         CheckForNewPlayers();
+        // Actualizar valores de vida en cada frame
+        foreach (var kvp in playerHealthBars)
+        {
+            var hb = kvp.Value;
+            if (hb != null && hb.targetPlayer != null)
+            {
+                hb.SetHealth(hb.targetPlayer.CurrentHealth, hb.targetPlayer.MaxHealth);
+            }
+        }
     }
     
     void SetupHealthBars()
@@ -171,6 +179,16 @@ public class HealthBarManager : MonoBehaviour
         if (worldCanvas != null)
         {
             healthBarGO.transform.SetParent(worldCanvas.transform, false);
+        }
+        else
+        {
+            // fallback: attach under main Canvas but keep it separate
+            Canvas mainCanvas = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None)
+                .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay);
+            if (mainCanvas != null)
+            {
+                healthBarGO.transform.SetParent(mainCanvas.transform, false);
+            }
         }
     }
     

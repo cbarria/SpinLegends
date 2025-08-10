@@ -41,6 +41,11 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         currentHealth = maxHealth;
         networkHealth = maxHealth;
         rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        }
         
         if (spinningTop == null)
         {
@@ -51,42 +56,80 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Solo configurar controles para el jugador local
         if (photonView.IsMine)
         {
-            // Asignar el joystick automáticamente si no está asignado
-            if (joystick == null)
-            {
-                joystick = FindFirstObjectByType<FixedJoystick>();
-                if (joystick == null)
-                    joystick = FindFirstObjectByType<FloatingJoystick>();
-                if (joystick == null)
-                    joystick = FindFirstObjectByType<VariableJoystick>();
-                if (joystick == null)
-                    joystick = FindFirstObjectByType<DynamicJoystick>();
-            }
-            if (joystick == null)
-                Debug.LogError("Joystick not found or not assigned in PlayerController. Is it in the scene and active?");
-            else
-            {
-                Debug.Log("Joystick asignado correctamente: " + joystick.name);
-                Debug.Log($"Joystick layer: {joystick.gameObject.layer}, Active: {joystick.gameObject.activeInHierarchy}");
-                
-                // Test del joystick después de un pequeño delay
-                Invoke(nameof(TestJoystick), 1f);
-            }
+            // Configurar joystick con retraso para asegurar que el QuickJoystickFix esté listo
+            Invoke(nameof(SetupJoystick), 1.5f);
             
             // Hacer que el spinner gire desde el inicio
             StartSpin();
+            // Vincular UI global al jugador local inmediatamente
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetLocalPlayer(this);
+            }
         }
         else
         {
-            // Para jugadores remotos, configurar el Rigidbody para interpolación
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            // Para jugadores remotos ya se configuró interpolación arriba
+        }
+    }
+    
+    void SetupJoystick()
+    {
+        // Asignar el joystick automáticamente si no está asignado
+        if (joystick == null)
+        {
+            joystick = FindFirstObjectByType<FixedJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<FloatingJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<VariableJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<DynamicJoystick>();
+        }
+        
+        if (joystick == null)
+        {
+            Debug.LogError("Joystick not found or not assigned in PlayerController. Is it in the scene and active?");
+            // Intentar encontrar el joystick después de un delay
+            Invoke(nameof(RetryFindJoystick), 2f);
+        }
+        else
+        {
+            Debug.Log("Joystick asignado correctamente: " + joystick.name);
+            Debug.Log($"Joystick layer: {joystick.gameObject.layer}, Active: {joystick.gameObject.activeInHierarchy}");
+            
+            // Verificar que el JoystickFocusManager esté configurado
+            EnsureJoystickFocusManager();
+            
+            // Test del joystick después de un pequeño delay
+            Invoke(nameof(TestJoystick), 1f);
         }
     }
     
     void Update()
     {
         // Solo procesar input para el jugador local
-        if (!photonView.IsMine) return;
+        if (!photonView.IsMine)
+        {
+            // Visual: girar suavemente el spinningTop para jugadores remotos
+            if (spinningTop != null && isSpinning)
+            {
+                float visualSpin = Mathf.Max(200f, spinSpeed * 0.6f);
+                spinningTop.Rotate(0f, visualSpin * Time.deltaTime, 0f, Space.Self);
+            }
+            // Si soy Master, garantizar respawn continuo de cualquier jugador muerto (incluye remotos)
+            if (PhotonNetwork.IsMasterClient && currentHealth <= 0f && !respawnQueued)
+            {
+                respawnQueued = true;
+                var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
+                if (spawnMgr != null)
+                {
+                    spawnMgr.SpawnPlayerForActor(photonView.OwnerActorNr);
+                    PhotonNetwork.Destroy(gameObject);
+                }
+            }
+            return;
+        }
         
         // Solo salto y giro visual si lo necesitas
         // HandleInput();
@@ -250,6 +293,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             
             // Aplicar daño a través de la red
             otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
+            otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
             
             // Aplicar knockback
             Vector3 knockbackDirection = (transform.position - collision.transform.position).normalized;
@@ -279,75 +323,102 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
-        currentHealth = Mathf.Max(0, currentHealth); // No permitir salud negativa
-        
+        currentHealth = Mathf.Max(0, currentHealth);
         Debug.Log($"Player {photonView.Owner.NickName} received {damage} damage. Health: {currentHealth}/{maxHealth}");
-        
         if (currentHealth <= 0)
         {
             Die();
         }
-        
-        // Update UI
         if (GameManager.Instance != null)
             GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
-            
-        // Efectos de daño
         if (photonView.IsMine)
         {
-            // Shake de cámara cuando recibes daño
             if (CameraShake.Instance != null)
             {
                 CameraShake.Instance.ShakeCamera(0.3f, 0.5f);
             }
         }
     }
-    
+
     [PunRPC]
     public void TakeDamageRPC(float damage)
     {
         TakeDamage(damage);
     }
-    
+
+    private int lastHitByActor;
+    private bool respawnQueued;
+
+    [PunRPC]
+    public void SetLastHitByRPC(int attackerActor)
+    {
+        lastHitByActor = attackerActor;
+    }
+
     void Die()
     {
         Debug.Log($"Jugador {photonView.Owner.NickName} ha muerto!");
-        
-        // Efectos de muerte
         if (photonView.IsMine)
         {
-            // Shake de cámara más fuerte
-            if (CameraShake.Instance != null)
+            if (GameManager.Instance != null) GameManager.Instance.OnLocalPlayerDied();
+            if (lastHitByActor != 0)
             {
-                CameraShake.Instance.ShakeCamera(0.5f, 1f);
+                photonView.RPC("RequestKOScoreRPC", RpcTarget.MasterClient, lastHitByActor, photonView.OwnerActorNr);
             }
-        }
-        
-        // Desactivar el jugador
-        gameObject.SetActive(false);
-        
-        // Respawn después de un tiempo (opcional) - usar Invoke en lugar de coroutine para evitar el error
-        if (photonView.IsMine)
-        {
-            Invoke(nameof(RespawnPlayer), 3f);
+            respawnQueued = true;
+            photonView.RPC("NotifyDeathRPC", RpcTarget.MasterClient, photonView.OwnerActorNr);
+            photonView.RPC("RequestRespawnRPC", RpcTarget.MasterClient, photonView.OwnerActorNr, 3f);
+            StartCoroutine(DestroyNextFrame());
         }
     }
-    
-    void RespawnPlayer()
+
+    System.Collections.IEnumerator DestroyNextFrame()
     {
-        // Respawn en una posición aleatoria
-        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
+        yield return null; // esperar un frame para que los RPC salgan
+        if (this != null && gameObject != null)
         {
-            // Buscar NetworkManager para respawn
-            NetworkManager networkManager = FindFirstObjectByType<NetworkManager>();
-            if (networkManager != null)
-            {
-                networkManager.RespawnPlayer();
-            }
-            else
-            {
-                Debug.LogWarning("NetworkManager no encontrado para respawn");
-            }
+            PhotonNetwork.Destroy(gameObject);
+        }
+    }
+
+    [PunRPC]
+    void NotifyDeathRPC(int actorNumber)
+    {
+        // Por ahora solo para trazas/posibles futuras reglas. El Master no hace nada adicional aquí.
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log($"🔔 Master recibió muerte de actor {actorNumber}");
+        }
+    }
+
+    [PunRPC]
+    void RequestRespawnRPC(int actorNumber, float delaySeconds, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+        StartCoroutine(MasterRespawnCoroutine(actorNumber, delaySeconds));
+    }
+
+    System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
+    {
+        yield return new WaitForSeconds(delaySeconds);
+        var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
+        if (spawnMgr != null)
+        {
+            spawnMgr.SpawnPlayerForActor(actorNumber);
+        }
+    }
+
+    [PunRPC]
+    void RequestKOScoreRPC(int attackerActor, int victimActor)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        var scoreMgr = FindFirstObjectByType<ScoreManager>();
+        if (scoreMgr != null)
+        {
+            scoreMgr.AddScoreMaster(attackerActor, 100);
         }
     }
     
@@ -376,6 +447,56 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         else
         {
             Debug.LogError("Joystick is null in TestJoystick()");
+        }
+    }
+    
+    void RetryFindJoystick()
+    {
+        Debug.Log("🔄 Reintentando encontrar joystick...");
+        
+        // Buscar joysticks nuevamente
+        if (joystick == null)
+        {
+            joystick = FindFirstObjectByType<FixedJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<FloatingJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<VariableJoystick>();
+            if (joystick == null)
+                joystick = FindFirstObjectByType<DynamicJoystick>();
+        }
+        
+        if (joystick != null)
+        {
+            Debug.Log("✅ Joystick encontrado en reintento: " + joystick.name);
+            EnsureJoystickFocusManager();
+        }
+        else
+        {
+            Debug.LogError("❌ Joystick no encontrado en reintento");
+        }
+    }
+    
+    void EnsureJoystickFocusManager()
+    {
+        // Verificar que el JoystickFocusManager esté configurado
+        JoystickFocusManager focusManager = FindFirstObjectByType<JoystickFocusManager>();
+        if (focusManager == null)
+        {
+            Debug.LogWarning("⚠️ JoystickFocusManager no encontrado. Creando uno...");
+            
+            // Crear el JoystickFocusManager si no existe
+            GameObject managerObj = new GameObject("JoystickFocusManager");
+            focusManager = managerObj.AddComponent<JoystickFocusManager>();
+            
+            // Configurar el joystick en el manager
+            focusManager.joysticks = new Joystick[] { joystick };
+            focusManager.forceJoystickFocus = true;
+            focusManager.initializationDelay = 0.5f;
+        }
+        else
+        {
+            Debug.Log("✅ JoystickFocusManager encontrado y configurado");
         }
     }
     
@@ -460,12 +581,11 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                     }
                 }
                 
-                // Sincronizar salud
-                if (Mathf.Abs(networkHealth - currentHealth) > 1f)
+                // Sincronizar salud (umbral fino)
+                if (Mathf.Abs(networkHealth - currentHealth) > 0.01f)
                 {
                     currentHealth = networkHealth;
-                    if (GameManager.Instance != null)
-                        GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
+                    // No actualizar GameManager aquí: la barra global solo refleja al jugador local
                 }
             }
         }

@@ -43,6 +43,14 @@ MonoBehaviour:
   - ApplyKnockbackRPC
   - TakeDamageRPC
   - SyncCollisionRPC
+  - ReceiveExistingPlayers
+  - RequestExistingPlayers
+  - RequestRespawnRPC
+  - RPC_RequestSpawnForActor
+  - RequestKOScoreRPC
+  - RPC_SyncScore
+  - SetLastHitByRPC
+  - NotifyDeathRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

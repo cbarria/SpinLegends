@@ -35,32 +35,35 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         SetupUI();
-        
-        // Buscar NetworkManager
         networkManager = FindFirstObjectByType<NetworkManager>();
         if (networkManager == null)
         {
             Debug.LogWarning("NetworkManager not found. Creating one automatically...");
             CreateNetworkManager();
         }
+        // Configura slider si existe
+        if (healthBar != null)
+        {
+            healthBar.minValue = 0f;
+            healthBar.maxValue = 1f;
+            healthBar.wholeNumbers = false;
+            healthBar.value = 0f; // hasta tener jugador local
+        }
+        UpdateHealthUI(0, 1);
     }
     
     void CreateNetworkManager()
     {
         GameObject networkManagerObj = new GameObject("NetworkManager");
         networkManager = networkManagerObj.AddComponent<NetworkManager>();
-        
-        // Configurar referencias básicas
         if (playerPrefab != null)
         {
             networkManager.playerPrefab = playerPrefab;
         }
-        
         if (spawnPoints.Length > 0)
         {
             networkManager.spawnPoints = spawnPoints;
         }
-        
         Debug.Log("NetworkManager created automatically");
     }
 
@@ -76,14 +79,14 @@ public class GameManager : MonoBehaviour
     {
         localPlayer = player;
         Debug.Log("Jugador local configurado: " + player.name);
+        UpdateHealthUI(localPlayer.CurrentHealth, localPlayer.MaxHealth);
     }
 
     public void UpdateHealthUI(float currentHealth, float maxHealth)
     {
-        if (healthBar != null)
-        {
-            healthBar.value = currentHealth / maxHealth;
-        }
+        if (healthBar == null) return;
+        float v = maxHealth > 0 ? currentHealth / maxHealth : 0f;
+        healthBar.value = Mathf.Clamp01(v);
     }
 
     public void OnSpinButtonPressed()
@@ -100,5 +103,10 @@ public class GameManager : MonoBehaviour
         {
             localPlayer.Jump();
         }
+    }
+
+    public void OnLocalPlayerDied()
+    {
+        UpdateHealthUI(0, 1);
     }
 } 

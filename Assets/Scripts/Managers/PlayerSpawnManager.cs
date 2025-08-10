@@ -24,17 +24,13 @@ public class PlayerSpawnManager : MonoBehaviourPun
             Debug.LogWarning("No hay puntos de spawn configurados!");
             return;
         }
-        
-        // Inicializar lista de spawn points disponibles
         RefreshAvailableSpawnPoints();
     }
     
     void RefreshAvailableSpawnPoints()
     {
         availableSpawnPoints.Clear();
-        
         if (spawnPoints == null) return;
-        
         foreach (Transform spawnPoint in spawnPoints)
         {
             if (spawnPoint != null)
@@ -42,7 +38,6 @@ public class PlayerSpawnManager : MonoBehaviourPun
                 availableSpawnPoints.Add(spawnPoint);
             }
         }
-        
         Debug.Log($"Spawn points disponibles: {availableSpawnPoints.Count}");
     }
     
@@ -52,32 +47,24 @@ public class PlayerSpawnManager : MonoBehaviourPun
         {
             RefreshAvailableSpawnPoints();
         }
-        
         if (availableSpawnPoints.Count == 0)
         {
             Debug.LogError("No hay puntos de spawn disponibles!");
             return null;
         }
-        
         Transform selectedSpawnPoint;
-        
         if (useRandomSpawn)
         {
-            // Seleccionar spawn point aleatorio
             int randomIndex = Random.Range(0, availableSpawnPoints.Count);
             selectedSpawnPoint = availableSpawnPoints[randomIndex];
             availableSpawnPoints.RemoveAt(randomIndex);
         }
         else
         {
-            // Usar spawn point secuencial
             selectedSpawnPoint = availableSpawnPoints[0];
             availableSpawnPoints.RemoveAt(0);
         }
-        
-        // Registrar el spawn point usado por este jugador
         playerSpawnPoints[playerId] = selectedSpawnPoint;
-        
         return selectedSpawnPoint;
     }
     
@@ -94,50 +81,113 @@ public class PlayerSpawnManager : MonoBehaviourPun
         }
     }
     
+    // Local self-spawn (kept for compatibility if needed)
     public void SpawnPlayer(int playerId)
     {
-        Debug.Log($"SpawnPlayer called with ID: {playerId}");
-        Debug.Log($"Player prefab name: {playerPrefabName}");
-        
+        // En flujo room-owned esta vía no debe usarse al entrar al room
+        if (!ResourceExists(playerPrefabName))
+        {
+            Debug.LogError($"❌ Resources.Load no encontró prefab '{playerPrefabName}'. Asegúrate de tener Assets/Resources/{playerPrefabName}.prefab");
+            return;
+        }
         Transform spawnPoint = GetSpawnPoint(playerId);
-        if (spawnPoint == null) 
+        if (spawnPoint == null)
         {
             Debug.LogError("No spawn point available!");
             return;
         }
-        
-        Debug.Log($"Using spawn point: {spawnPoint.name} at position: {spawnPoint.position}");
-        
-        // Instanciar jugador en la red
         GameObject player = PhotonNetwork.Instantiate(playerPrefabName, spawnPoint.position, spawnPoint.rotation);
-        
         if (player == null)
         {
             Debug.LogError("Failed to instantiate player!");
             return;
         }
-        
-        Debug.Log($"Player instantiated: {player.name}");
-        
-        // Configurar el jugador
-        PlayerController playerController = player.GetComponent<PlayerController>();
-        if (playerController != null)
+        PhotonView spawnedPv = player.GetComponent<PhotonView>();
+        if (spawnedPv != null)
         {
-            // Asignar ID del jugador
-            playerController.photonView.OwnerActorNr = playerId;
-            
-            // Configurar nombre del jugador
-            string playerName = PhotonNetwork.CurrentRoom.GetPlayer(playerId)?.NickName ?? "Player" + playerId;
-            player.name = playerName;
-            
-            Debug.Log($"Player configured: {playerName}");
+            Debug.Log($"Spawned player PhotonView → ViewID={spawnedPv.ViewID}, IsMine={spawnedPv.IsMine}");
         }
         else
         {
-            Debug.LogError("PlayerController component not found on instantiated player!");
+            Debug.LogError("❌ Spawned player has no PhotonView. Ensure the prefab has a PhotonView component.");
         }
-        
+        PlayerController playerController = player.GetComponent<PlayerController>();
+        if (playerController != null)
+        {
+            string playerName = PhotonNetwork.CurrentRoom.GetPlayer(playerId)?.NickName ?? "Player" + playerId;
+            player.name = playerName;
+        }
         Debug.Log($"Jugador {playerId} spawneado en {spawnPoint.name}");
+    }
+    
+    // Master-authoritative spawn for any actor (uses RoomObject so late joiners always get it)
+    public void SpawnPlayerForActor(int actorNumber)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("SpawnPlayerForActor solo debe llamarlo el MasterClient");
+            return;
+        }
+        if (!ResourceExists(playerPrefabName))
+        {
+            Debug.LogError($"❌ Resources.Load no encontró prefab '{playerPrefabName}'. Asegúrate de tener Assets/Resources/{playerPrefabName}.prefab");
+            return;
+        }
+        // Limpiar restos: si por alguna razón quedó un objeto para ese actor, destruirlo
+        var existing = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var pc in existing)
+        {
+            if (pc != null && pc.photonView != null && pc.photonView.OwnerActorNr == actorNumber)
+            {
+                PhotonNetwork.Destroy(pc.gameObject);
+            }
+        }
+        if (HasPlayerObject(actorNumber))
+        {
+            Debug.Log($"↩️ Ya existe objeto de jugador para actor {actorNumber}, no se crea otro.");
+            return;
+        }
+        Transform spawnPoint = GetSpawnPoint(actorNumber);
+        if (spawnPoint == null)
+        {
+            Debug.LogError("No spawn point available!");
+            return;
+        }
+        GameObject playerObj = PhotonNetwork.InstantiateRoomObject(playerPrefabName, spawnPoint.position, spawnPoint.rotation);
+        if (playerObj == null)
+        {
+            Debug.LogError("Failed to instantiate room-owned player!");
+            return;
+        }
+        PhotonView pv = playerObj.GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogError("❌ Room player object sin PhotonView");
+            return;
+        }
+        pv.TransferOwnership(actorNumber);
+        string playerName = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber)?.NickName ?? "Player" + actorNumber;
+        playerObj.name = playerName;
+        Debug.Log($"✅ Master creó RoomObject para actor {actorNumber} con ViewID={pv.ViewID} y transfirió ownership");
+    }
+    
+    bool HasPlayerObject(int actorNumber)
+    {
+        var players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var p in players)
+        {
+            if (p != null && p.photonView != null && p.photonView.OwnerActorNr == actorNumber)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    bool ResourceExists(string prefabName)
+    {
+        var res = Resources.Load<GameObject>(prefabName);
+        return res != null;
     }
     
     public void RespawnPlayer(int playerId)
@@ -151,19 +201,16 @@ public class PlayerSpawnManager : MonoBehaviourPun
         SpawnPlayer(playerId);
     }
     
-    // Método para verificar si un spawn point está disponible
     public bool IsSpawnPointAvailable(Transform spawnPoint)
     {
         return availableSpawnPoints.Contains(spawnPoint);
     }
     
-    // Método para obtener todos los spawn points ocupados
     public Transform[] GetOccupiedSpawnPoints()
     {
         return playerSpawnPoints.Values.ToArray();
     }
     
-    // Método para limpiar todos los spawn points
     public void ClearAllSpawnPoints()
     {
         availableSpawnPoints.Clear();
@@ -171,7 +218,6 @@ public class PlayerSpawnManager : MonoBehaviourPun
         RefreshAvailableSpawnPoints();
     }
     
-    // Método para agregar spawn points dinámicamente
     public void AddSpawnPoint(Transform newSpawnPoint)
     {
         if (newSpawnPoint != null && !availableSpawnPoints.Contains(newSpawnPoint))
@@ -180,15 +226,12 @@ public class PlayerSpawnManager : MonoBehaviourPun
         }
     }
     
-    // Método para remover spawn points
     public void RemoveSpawnPoint(Transform spawnPoint)
     {
         if (availableSpawnPoints.Contains(spawnPoint))
         {
             availableSpawnPoints.Remove(spawnPoint);
         }
-        
-        // Remover de spawn points ocupados si es necesario
         List<int> keysToRemove = new List<int>();
         foreach (var kvp in playerSpawnPoints)
         {
@@ -197,7 +240,6 @@ public class PlayerSpawnManager : MonoBehaviourPun
                 keysToRemove.Add(kvp.Key);
             }
         }
-        
         foreach (int key in keysToRemove)
         {
             playerSpawnPoints.Remove(key);

@@ -1,37 +1,31 @@
 # Contributing to SpinLegends
 
-Thank you for your interest in contributing to SpinLegends! We welcome bug reports, feature requests, and code contributions.
+Thanks for your interest in contributing! We welcome bug reports, feature requests, and PRs.
 
 ## 🐞 Reporting Bugs
-- Please open an issue with a clear description of the problem.
-- Include steps to reproduce, expected behavior, and screenshots if possible.
-- Specify your Unity version, platform (Android/PC), and any relevant logs.
+- Open an issue with clear steps to reproduce and expected behavior
+- Include Unity version, platform (Android/PC), and any relevant logs/screenshots
 
-## 💡 Requesting Features
-- Open an issue and label it as a feature request.
-- Describe the feature, its purpose, and any relevant examples or mockups.
+## 💡 Feature Requests
+- Open an issue labeled “feature” and describe the user story and acceptance criteria
 
 ## 🔀 Pull Requests
-- Fork the repository and create a new branch for your changes.
-- Write clear, descriptive commit messages.
-- Test your changes on both Android and PC if possible.
-- Ensure your code builds and runs without errors or warnings.
-- Submit a pull request with a summary of your changes and reference any related issues.
+- Fork and create a feature branch
+- Keep commits focused and descriptive
+- Test on PC and Android when applicable
+- Ensure the project builds clean (no errors/warnings)
 
-## 🧑‍💻 Coding Style
-- Use English for all code, comments, and UI text.
-- Follow C# conventions for Unity (PascalCase for public members, camelCase for private).
-- Use descriptive variable and method names.
-- Keep methods short and focused.
-- Add comments for complex logic.
-- Prefer composition over inheritance when possible.
+## 🧑‍💻 Code Style
+- English for code, comments, and UI text
+- C# Unity conventions; meaningful naming; short, focused methods
+- Add concise comments for non‑obvious logic
 
-## 📦 Assets & Third-Party Code
-- Only include assets you have the right to use.
-- Credit any third-party assets or code in your pull request.
+## 📦 Assets & Third‑Party Code
+- Only include assets you can legally redistribute
+- Credit any third‑party assets/code in your PR
 
-## 🙏 Code of Conduct
-- Be respectful and constructive in all communications.
-- Help us keep the community welcoming for everyone.
+## 🙏 Credits
+- Mixed authorship: CB (maintainer) + GPT‑assisted pairing
+- Networking powered by Photon PUN (Exit Games)
 
-Thank you for helping make SpinLegends better! 
+Thanks for helping make SpinLegends better! 
