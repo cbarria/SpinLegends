@@ -29,10 +29,13 @@ public class HealthBarManager : MonoBehaviour
             mainCamera = FindFirstObjectByType<Camera>();
         }
         
+        Debug.Log($"🏥 Camera encontrada: {mainCamera != null}");
+        Debug.Log($"🏥 Auto-creación: {autoCreateHealthBars}");
+        
         if (autoCreateHealthBars)
         {
-            Debug.Log("🏥 Auto-creación de health bars habilitada, configurando en 1s...");
-            Invoke(nameof(SetupHealthBars), 1f);
+            Debug.Log("🏥 Auto-creación de health bars habilitada, configurando en 2s...");
+            Invoke(nameof(SetupHealthBars), 2f); // Más tiempo para que aparezcan los players
         }
         else
         {

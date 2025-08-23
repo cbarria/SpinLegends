@@ -109,25 +109,28 @@ public class HealthBar : MonoBehaviour
     
     void SetupUIComponents()
     {
-        // Buscar o crear componentes UI
-        if (healthBarFill == null)
+        // Buscar componentes UI creados por HealthBarManager
+        Image[] images = GetComponentsInChildren<Image>();
+        
+        if (images.Length >= 2)
         {
-            healthBarFill = transform.Find("HealthBarFill")?.GetComponent<Image>();
-            if (healthBarFill == null)
-            {
-                CreateHealthBarUI();
-            }
+            healthBarBackground = images[0]; // Background (primer Image)
+            healthBarFill = images[1]; // Fill (segundo Image)
+            
+            Debug.Log($"🏥✅ UI Components found: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+        }
+        else if (images.Length == 1)
+        {
+            healthBarFill = images[0];
+            Debug.Log($"🏥⚠️ Only one Image found: {healthBarFill.name}");
+        }
+        else
+        {
+            Debug.LogError("🏥❌ No Image components found in children!");
         }
         
-        if (healthBarBackground == null)
-        {
-            healthBarBackground = transform.Find("HealthBarBackground")?.GetComponent<Image>();
-        }
-        
-        if (healthText == null)
-        {
-            healthText = transform.Find("HealthText")?.GetComponent<TextMeshProUGUI>();
-        }
+        // Buscar texto si existe
+        healthText = GetComponentInChildren<TextMeshProUGUI>();
     }
     
     void CreateHealthBarUI()
