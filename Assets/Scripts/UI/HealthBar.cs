@@ -72,24 +72,18 @@ public class HealthBar : MonoBehaviour
             
             Debug.Log($"🏥🔧 Initial health values: Current={currentHealth}, Max={maxHealth}");
             
-            // Configurar Canvas
-            if (healthCanvas == null)
+            // VERIFICACIÓN CRÍTICA: Si los valores están mal, intentar obtenerlos de nuevo
+            if (currentHealth <= 0 || maxHealth <= 0)
             {
-                healthCanvas = GetComponentInParent<Canvas>();
-                if (healthCanvas == null)
-                {
-                    CreateHealthCanvas();
-                }
+                Debug.LogWarning($"🏥⚠️ Valores incorrectos detectados! Reintentando...");
+                
+                // Esperar un frame y volver a intentar
+                StartCoroutine(RetryHealthInitialization());
+                return;
             }
             
-            // Configurar componentes UI si no están asignados
-            SetupUIComponents();
-            
-            // Actualizar barra inicial
-            UpdateHealthBar();
-            
-            isInitialized = true;
-            Debug.Log($"🏥🔧 HealthBar initialized for {targetPlayer.name} - Canvas: {healthCanvas != null} - Fill: {healthBarFill != null} - Position: {transform.position}");
+            // Continuar con la inicialización normal
+            ContinueInitialization();
         }
         else
         {
@@ -261,8 +255,39 @@ public class HealthBar : MonoBehaviour
         // Calcular porcentaje de salud
         float healthPercentage = maxHealth > 0 ? currentHealth / maxHealth : 0f;
         
+        // DEBUG CRÍTICO: Verificar valores
+        if (healthPercentage == 0f)
+        {
+            Debug.LogError($"🏥💀 PROBLEMA: healthPercentage = 0! Current={currentHealth}, Max={maxHealth}, Player={targetPlayer?.name}");
+            
+            // Si el player existe, obtener valores directamente
+            if (targetPlayer != null)
+            {
+                float realCurrent = targetPlayer.CurrentHealth;
+                float realMax = targetPlayer.MaxHealth;
+                Debug.LogError($"🏥🔍 Valores REALES del player: Current={realCurrent}, Max={realMax}");
+                
+                // Usar valores reales si están disponibles
+                if (realMax > 0)
+                {
+                    currentHealth = realCurrent;
+                    maxHealth = realMax;
+                    healthPercentage = realCurrent / realMax;
+                    Debug.LogError($"🏥🔧 CORREGIDO: healthPercentage = {healthPercentage:F2}");
+                }
+            }
+        }
+        
         // Actualizar fill amount
         float oldFillAmount = healthBarFill.fillAmount;
+        
+        // PROTECCIÓN: No permitir fillAmount = 0 a menos que realmente esté muerto
+        if (healthPercentage == 0f && targetPlayer != null && targetPlayer.CurrentHealth > 0)
+        {
+            Debug.LogWarning($"🏥🛡️ PROTECCIÓN: Evitando fillAmount = 0 cuando health > 0. Player health: {targetPlayer.CurrentHealth}");
+            healthPercentage = 1f; // Forzar al 100% como fallback
+        }
+        
         healthBarFill.fillAmount = healthPercentage;
         
         // Debug si cambió el fill amount
@@ -373,5 +398,64 @@ public class HealthBar : MonoBehaviour
             Debug.Log("🏥🔄 Force initializing health bar...");
             InitializeHealthBar();
         }
+    }
+    
+    // Corrutina para reintentar la inicialización si los valores de salud están mal
+    System.Collections.IEnumerator RetryHealthInitialization()
+    {
+        Debug.Log("🏥⏳ Waiting for health values to initialize...");
+        
+        // Esperar hasta 2 segundos para que el player se inicialice
+        float maxWaitTime = 2f;
+        float waitTime = 0f;
+        
+        while (waitTime < maxWaitTime)
+        {
+            yield return new WaitForSeconds(0.1f);
+            waitTime += 0.1f;
+            
+            if (targetPlayer != null)
+            {
+                float newCurrent = targetPlayer.CurrentHealth;
+                float newMax = targetPlayer.MaxHealth;
+                
+                Debug.Log($"🏥🔄 Retry {waitTime:F1}s: Current={newCurrent}, Max={newMax}");
+                
+                if (newCurrent > 0 && newMax > 0)
+                {
+                    Debug.Log("🏥✅ Health values found! Continuing initialization...");
+                    currentHealth = newCurrent;
+                    maxHealth = newMax;
+                    
+                    // Continuar con la inicialización
+                    ContinueInitialization();
+                    yield break;
+                }
+            }
+        }
+        
+        Debug.LogError("🏥❌ Failed to get health values after 2 seconds!");
+    }
+    
+    void ContinueInitialization()
+    {
+        // Configurar Canvas
+        if (healthCanvas == null)
+        {
+            healthCanvas = GetComponentInParent<Canvas>();
+            if (healthCanvas == null)
+            {
+                CreateHealthCanvas();
+            }
+        }
+        
+        // Configurar componentes UI si no están asignados
+        SetupUIComponents();
+        
+        // Actualizar barra inicial
+        UpdateHealthBar();
+        
+        isInitialized = true;
+        Debug.Log($"🏥🔧 HealthBar initialized for {targetPlayer.name} - Canvas: {healthCanvas != null} - Fill: {healthBarFill != null} - Position: {transform.position}");
     }
 } 
