@@ -99,6 +99,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     void SetupJoystick()
     {
+        // 🎯 CRITICAL: Solo el jugador LOCAL debe tener joystick
+        if (!photonView.IsMine) return;
+        
         // Asignar el joystick automáticamente si no está asignado
         if (joystick == null)
         {
