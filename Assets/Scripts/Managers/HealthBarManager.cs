@@ -17,6 +17,7 @@ public class HealthBarManager : MonoBehaviour
     
     private Dictionary<int, HealthBar> playerHealthBars = new Dictionary<int, HealthBar>();
     private Camera mainCamera;
+    private float lastHealthUpdate = 0f;
     
     void Start()
     {
@@ -41,14 +42,18 @@ public class HealthBarManager : MonoBehaviour
     void Update()
     {
         CheckForNewPlayers();
-        // Actualizar valores de vida en cada frame
-        foreach (var kvp in playerHealthBars)
+        // Actualizar valores de vida - MENOS FRECUENTE para reducir spam
+        if (Time.time - lastHealthUpdate > 0.2f) // Solo cada 0.2s
         {
-            var hb = kvp.Value;
-            if (hb != null && hb.targetPlayer != null)
+            foreach (var kvp in playerHealthBars)
             {
-                hb.SetHealth(hb.targetPlayer.CurrentHealth, hb.targetPlayer.MaxHealth);
+                var hb = kvp.Value;
+                if (hb != null && hb.targetPlayer != null)
+                {
+                    hb.SetHealth(hb.targetPlayer.CurrentHealth, hb.targetPlayer.MaxHealth);
+                }
             }
+            lastHealthUpdate = Time.time;
         }
     }
     
@@ -136,8 +141,18 @@ public class HealthBarManager : MonoBehaviour
             return;
         }
         
-        // Crear GameObject para la health bar
-        GameObject healthBarGO = new GameObject($"HealthBar_{player.name}", typeof(RectTransform));
+        // Crear GameObject para la health bar con Canvas World Space
+        GameObject healthBarGO = new GameObject($"HealthBar_{player.name}");
+        
+        // Agregar Canvas World Space
+        Canvas canvas = healthBarGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = mainCamera;
+        
+        // Configurar escala del Canvas
+        RectTransform canvasRect = healthBarGO.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(2f, 0.5f); // Tamaño de health bar
+        canvasRect.localScale = Vector3.one * 0.01f; // Escala pequeña para world space
         
         // Agregar componente HealthBar
         HealthBar healthBar = healthBarGO.AddComponent<HealthBar>();

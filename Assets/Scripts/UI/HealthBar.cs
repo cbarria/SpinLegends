@@ -32,6 +32,7 @@ public class HealthBar : MonoBehaviour
     private float currentHealth;
     private float maxHealth;
     private bool isInitialized = false;
+    private float lastDebugTime = 0f;
     
     void Start()
     {
@@ -229,8 +230,12 @@ public class HealthBar : MonoBehaviour
             healthText.text = $"{Mathf.RoundToInt(currentHealth)}/{Mathf.RoundToInt(maxHealth)}";
         }
         
-        // Debug
-        Debug.Log($"HealthBar updated: {currentHealth:F0}/{maxHealth:F0} ({healthPercentage:P0})");
+        // Debug (reducido)
+        if (Time.time - lastDebugTime > 2f) // Solo cada 2s
+        {
+            Debug.Log($"HealthBar updated: {currentHealth:F0}/{maxHealth:F0} ({healthPercentage:P0})");
+            lastDebugTime = Time.time;
+        }
     }
     
     void UpdateHealthColor(float healthPercentage)
