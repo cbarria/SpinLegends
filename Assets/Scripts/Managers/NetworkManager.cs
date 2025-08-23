@@ -337,28 +337,12 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
     System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
     {
-        Debug.Log($"⏳ RESPAWN: Iniciando coroutine para player {actorNumber}, esperando {delaySeconds}s");
+        Debug.Log($"⏳ RESPAWN: Esperando {delaySeconds}s para respawn del player {actorNumber}");
+        yield return new WaitForSecondsRealtime(delaySeconds);
         
-        try
-        {
-            yield return new WaitForSecondsRealtime(delaySeconds);
-            Debug.Log($"✅ RESPAWN: Tiempo de espera completado para player {actorNumber}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ RESPAWN: Error en WaitForSecondsRealtime: {e.Message}");
-            yield break;
-        }
-        
-        Debug.Log($"🔍 RESPAWN: Verificando si player {actorNumber} está en la sala...");
+        Debug.Log($"✅ RESPAWN: Tiempo de espera completado para player {actorNumber}");
         
         // Verificar que el player aún está en la sala
-        if (PhotonNetwork.CurrentRoom == null)
-        {
-            Debug.LogError($"❌ RESPAWN: No hay CurrentRoom!");
-            yield break;
-        }
-        
         if (PhotonNetwork.CurrentRoom.GetPlayer(actorNumber) == null)
         {
             Debug.LogWarning($"⚠️ RESPAWN: Player {actorNumber} ya no está en la sala");
@@ -367,7 +351,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
         
         Debug.Log($"✅ RESPAWN: Player {actorNumber} aún está en la sala");
         
-        Debug.Log($"🔍 RESPAWN: Verificando PlayerSpawnManager...");
         if (spawnManager != null)
         {
             Debug.Log($"🔄 RESPAWN: Ejecutando respawn para player {actorNumber}");
@@ -378,8 +361,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
         {
             Debug.LogError($"❌ RESPAWN: No se encontró PlayerSpawnManager!");
         }
-        
-        Debug.Log($"🎉 RESPAWN: Coroutine completada para player {actorNumber}");
     }
 
     // SPAWN CONTINUATION - Moved from PlayerSpawnManager to persist across destruction

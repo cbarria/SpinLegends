@@ -356,26 +356,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             if (GameManager.Instance != null) GameManager.Instance.OnLocalPlayerDied();
             
-            // Registrar muerte en ScoreManager con ViewID
-            if (ScoreManager.Instance != null)
-            {
-                if (lastHitByActor != 0)
-                {
-                    // Fue un kill - registrar kill y death
-                    ScoreManager.Instance.RegisterKill(lastHitByActor, photonView.OwnerActorNr, photonView.ViewID);
-                    Debug.Log($"💀 KILL REGISTRADO: Player {lastHitByActor} mató a Player {photonView.OwnerActorNr} (ViewID:{photonView.ViewID})");
-                }
-                else
-                {
-                    // Muerte por caída/suicidio - solo death
-                    ScoreManager.Instance.RegisterDeath(photonView.OwnerActorNr, photonView.ViewID);
-                    Debug.Log($"💀 DEATH REGISTRADA: Player {photonView.OwnerActorNr} murió (ViewID:{photonView.ViewID})");
-                }
-                
-                // Mostrar scoreboard cada muerte
-                ScoreManager.Instance.PrintScoreboard();
-            }
-            
             // Dar puntos solo si fue por combate (legacy)
             if (lastHitByActor != 0)
             {
@@ -387,20 +367,21 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Ocultar joystick cuando muere
             HideJoystick();
             
-            // Solicitar respawn directamente al NetworkManager (sin RPC)
+            // Solicitar respawn directamente al NetworkManager (sin RPC) - COMO ANTES
             var networkManager = NetworkManager.Instance;
             if (networkManager != null)
             {
-                networkManager.RequestRespawn(photonView.OwnerActorNr, 0.1f);
+                networkManager.RequestRespawn(photonView.OwnerActorNr, 1f); // VOLVER AL DELAY ORIGINAL
             }
             else
             {
                 Debug.LogError("❌ RESPAWN: No se encontró NetworkManager!");
             }
-            StartCoroutine(DestroyNextFrame());
+            // Destruir el objeto simple
+            PhotonNetwork.Destroy(gameObject);
         }
     }
-
+    
     System.Collections.IEnumerator DestroyNextFrame()
     {
         yield return null; // esperar un frame para que los RPC salgan

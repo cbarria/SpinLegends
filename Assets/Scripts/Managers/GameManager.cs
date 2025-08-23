@@ -56,17 +56,7 @@ public class GameManager : MonoBehaviour
             CreateNetworkManager();
         }
         
-        // Verificar si existe ScoreManager
-        var scoreManager = FindFirstObjectByType<ScoreManager>();
-        if (scoreManager == null)
-        {
-            Debug.LogWarning("🏆 ScoreManager not found. Creating one automatically...");
-            CreateScoreManager();
-        }
-        else
-        {
-            Debug.Log("🏆 ScoreManager found!");
-        }
+        // ScoreManager opcional - no crear automáticamente para evitar problemas
         // Configura slider si existe
         if (healthBar != null)
         {
