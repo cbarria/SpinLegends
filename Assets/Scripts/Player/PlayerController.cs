@@ -129,6 +129,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     void Update()
     {
+        // 🎯 TODOS los players deben checkear su posición (caída/arena)
+        CheckPositionDeath();
+        
         // Solo procesar input para el jugador local
         if (!photonView.IsMine)
         {
@@ -149,27 +152,30 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             spinningTop.Rotate(0f, visualSpin * Time.deltaTime, 0f, Space.Self);
         }
         
-        // Salto
+        // Salto (solo local)
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
             Jump();
         }
-        
-        // Detección de caída por altura
+    }
+    
+    void CheckPositionDeath()
+    {
+        // 🕳️ DETECCIÓN DE CAÍDA - TODOS los players checkean su posición
         if (transform.position.y < fallDeathHeight)
         {
-            Debug.Log($"🕳️💀 CAÍDA DETECTADA: Player {photonView.OwnerActorNr} cayó a Y={transform.position.y:F1} (límite: {fallDeathHeight})");
+            Debug.Log($"🕳️💀 CAÍDA DETECTADA: Player {photonView.OwnerActorNr} cayó a Y={transform.position.y:F1} (límite: {fallDeathHeight}) - IsMine: {photonView.IsMine}");
             // Muerte por caída - forzar respawn inmediato
             currentHealth = 0f;
             Die();
         }
         
-        // 🏟️ DETECCIÓN DE LÍMITES DE ARENA - Morir si sales del radio
+        // 🏟️ DETECCIÓN DE LÍMITES DE ARENA - TODOS checkean límites
         Vector3 arenaCenter = Vector3.zero; // Asumiendo arena centrada en (0,0,0)
         float distanceFromCenter = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), arenaCenter);
         if (distanceFromCenter > arenaRadius)
         {
-            Debug.Log($"🏟️💀 FUERA DE ARENA: Player {photonView.OwnerActorNr} salió del radio ({distanceFromCenter:F1} > {arenaRadius})");
+            Debug.Log($"🏟️💀 FUERA DE ARENA: Player {photonView.OwnerActorNr} salió del radio ({distanceFromCenter:F1} > {arenaRadius}) - IsMine: {photonView.IsMine}");
             currentHealth = 0f;
             Die();
         }
@@ -406,17 +412,11 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Ocultar joystick cuando muere
             HideJoystick();
             
-            // 🎯 RESPAWN VIA RPC: Cliente solicita respawn al Master
-            var networkManager = NetworkManager.Instance;
-            if (networkManager != null && networkManager.photonView != null)
-            {
-                Debug.Log($"📡 RESPAWN: Cliente {photonView.OwnerActorNr} solicitando respawn al Master via RPC");
-                networkManager.photonView.RPC("RequestRespawnRPC", RpcTarget.MasterClient, photonView.OwnerActorNr, 1f);
-            }
-            else
-            {
-                Debug.LogError("❌ RESPAWN: No se encontró NetworkManager o PhotonView!");
-            }
+            // 🎯 RESPAWN VIA EVENT: Cliente solicita respawn al Master
+            Debug.Log($"📡 RESPAWN: Cliente {photonView.OwnerActorNr} solicitando respawn al Master via Event");
+            var content = new object[] { photonView.OwnerActorNr, 1f };
+            var options = new ExitGames.Client.Photon.RaiseEventOptions { Receivers = ExitGames.Client.Photon.ReceiverGroup.MasterClient };
+            PhotonNetwork.RaiseEvent(102, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
         }

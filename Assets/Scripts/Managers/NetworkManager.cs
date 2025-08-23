@@ -215,6 +215,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
     public void OnEvent(EventData photonEvent)
     {
+        // Event 101: Spawn Request
         if (photonEvent.Code == SpawnRequestEventCode && PhotonNetwork.IsMasterClient)
         {
             var data = photonEvent.CustomData as object[];
@@ -224,6 +225,16 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
                 {
                     spawnManager.SpawnPlayerForActor(actorNumber);
                 }
+            }
+        }
+        // Event 102: Respawn Request
+        else if (photonEvent.Code == 102 && PhotonNetwork.IsMasterClient)
+        {
+            var data = photonEvent.CustomData as object[];
+            if (data != null && data.Length >= 2 && data[0] is int actorNumber && data[1] is float delay)
+            {
+                Debug.Log($"🎯 RESPAWN EVENT: Master recibió solicitud para player {actorNumber} con delay {delay}s");
+                RequestRespawn(actorNumber, delay);
             }
         }
     }
@@ -335,12 +346,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
         StartCoroutine(MasterRespawnCoroutine(actorNumber, delaySeconds));
     }
     
-    [PunRPC]
-    void RequestRespawnRPC(int actorNumber, float delaySeconds)
-    {
-        Debug.Log($"📡 RESPAWN RPC: Master recibió solicitud de respawn para player {actorNumber}");
-        RequestRespawn(actorNumber, delaySeconds);
-    }
+    // RPC removed - now using PhotonNetwork.RaiseEvent for respawn requests
 
     System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
     {
