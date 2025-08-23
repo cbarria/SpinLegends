@@ -20,6 +20,7 @@ public class HealthBarManager : MonoBehaviour
     
     void Start()
     {
+        Debug.Log("🏥 HealthBarManager iniciado");
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
@@ -28,7 +29,12 @@ public class HealthBarManager : MonoBehaviour
         
         if (autoCreateHealthBars)
         {
+            Debug.Log("🏥 Auto-creación de health bars habilitada, configurando en 1s...");
             Invoke(nameof(SetupHealthBars), 1f);
+        }
+        else
+        {
+            Debug.Log("🏥 Auto-creación de health bars deshabilitada");
         }
     }
     

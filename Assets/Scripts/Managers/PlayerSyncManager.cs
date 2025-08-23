@@ -444,11 +444,13 @@ public class PlayerSyncManager : MonoBehaviourPunCallbacks
     // Aplicar estado del jugador
     void ApplyPlayerState(PlayerController player, PlayerInfo info)
     {
-        // Aplicar velocidad si tiene Rigidbody
+        // Aplicar velocidad si tiene Rigidbody (COMENTADO - estaba limitando velocidad)
+        /*
         if (player.Rigidbody != null)
         {
             player.Rigidbody.linearVelocity = info.velocity;
         }
+        */
         
         // Aplicar estado de giro
         if (info.isSpinning)

@@ -5,16 +5,16 @@ using Photon.Pun;
 public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
 {
     [Header("Collision Settings")]
-    public float collisionDamageMultiplier = 1f;
-    public float knockbackForce = 25f; // Aumentado de 15f a 25f para más efecto
-    public float minCollisionForce = 1f; // Reducido de 2f a 1f para detectar más colisiones
+    public float collisionDamageMultiplier = 2f; // ¡DAÑO EXPLOSIVO!
+    public float knockbackForce = 50f; // ¡KNOCKBACK SÚPER FUERTE para choques dramáticos!
+    public float minCollisionForce = 0.5f; // Detecta hasta las colisiones más sutiles
     public LayerMask playerLayer = 1;
     
     [Header("Spin Impact Settings")]
     [Tooltip("Factor para convertir velocidad angular (rad/s) a contribución de fuerza de colisión.")]
-    public float angularImpactScale = 0.15f;
+    public float angularImpactScale = 0.3f; // ¡DOBLE IMPACTO de giro!
     [Tooltip("Tiempo mínimo entre colisiones procesadas con el mismo jugador (para evitar spam)")]
-    public float collisionCooldown = 0.15f;
+    public float collisionCooldown = 0.1f; // Más colisiones rápidas para acción continua
     
     [Header("Effects")]
     public GameObject collisionEffectPrefab;
@@ -54,7 +54,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         if (!photonView.IsMine) return;
         if (collision.gameObject.CompareTag("Player"))
         {
-            Debug.Log($"Collision detected with player: {collision.gameObject.name}, Force: {collision.relativeVelocity.magnitude}");
+
             HandlePlayerCollision(collision);
         }
     }
@@ -89,7 +89,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
     {
         PlayerController otherPlayer = collision.gameObject.GetComponent<PlayerController>();
         if (otherPlayer == null) return;
-        Debug.Log($"Processing collision with {otherPlayer.name}");
+
         float collisionForce = collision.relativeVelocity.magnitude;
         if (collisionForce < minCollisionForce) return;
         ApplyCollisionEffects(collision, otherPlayer, collisionForce);
@@ -99,24 +99,24 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
     {
         PlayerController otherPlayer = collision.gameObject.GetComponent<PlayerController>();
         if (otherPlayer == null) return;
-        Debug.Log($"Processing side/continuous collision with {otherPlayer.name} (F={collisionForce:F2})");
+
         ApplyCollisionEffects(collision, otherPlayer, collisionForce);
     }
 
     void ApplyCollisionEffects(Collision collision, PlayerController otherPlayer, float collisionForce)
     {
-        // Calcular daño basado en velocidad de colisión y estado de giro
+        // Calcular daño basado en velocidad de colisión y estado de giro - ¡EXPLOSIVO!
         float damage = collisionForce * collisionDamageMultiplier;
         bool isSpinning = playerController != null && playerController.IsSpinning();
         bool otherIsSpinning = otherPlayer.IsSpinning();
-        if (isSpinning) damage *= 2f;
-        if (isSpinning && otherIsSpinning) damage *= 1.5f;
+        if (isSpinning) damage *= 3f; // ¡TRIPLE DAÑO cuando giras!
+        if (isSpinning && otherIsSpinning) damage *= 2f; // ¡CHOQUE ÉPICO entre spinners!
         // Dirección de knockback basada en el punto de contacto (más estable para choques laterales)
         Vector3 contactPoint = collision.contacts.Length > 0 ? collision.contacts[0].point : otherPlayer.transform.position;
         Vector3 knockbackDirection = (transform.position - contactPoint).normalized;
         Vector3 otherKnockbackDirection = -knockbackDirection;
-        float actualKnockbackForce = Mathf.Max(knockbackForce * 0.5f, knockbackForce * (collisionForce / 2f));
-        actualKnockbackForce = Mathf.Clamp(actualKnockbackForce, knockbackForce * 0.5f, knockbackForce * 2.5f);
+        float actualKnockbackForce = Mathf.Max(knockbackForce * 0.8f, knockbackForce * collisionForce);
+        actualKnockbackForce = Mathf.Clamp(actualKnockbackForce, knockbackForce * 0.8f, knockbackForce * 4f); // ¡HASTA 4X KNOCKBACK!
         // Aplicar daño al otro jugador
         otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
         otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
@@ -128,7 +128,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         otherPlayer.photonView.RPC("ApplyKnockbackRPC", RpcTarget.All, otherKnockbackDirection, actualKnockbackForce);
         SyncCollisionToNetwork(contactPoint, damage, knockbackDirection);
         PlayCollisionEffects(contactPoint, collisionForce);
-        Debug.Log($"Collision: Damage {damage}, Knockback {actualKnockbackForce}, Force {collisionForce}");
+
     }
     
     void SyncCollisionToNetwork(Vector3 collisionPoint, float damage, Vector3 knockbackDirection)
@@ -176,10 +176,10 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         }
         if (photonView.IsMine && CameraShake.Instance != null)
         {
-            float shakeIntensity = Mathf.Clamp01(collisionForce / 15f);
-            CameraShake.Instance.ShakeCamera(shakeIntensity * 0.3f, 0.5f);
+            float shakeIntensity = Mathf.Clamp01(collisionForce / 10f); // Más sensible
+            CameraShake.Instance.ShakeCamera(0.5f + shakeIntensity * 0.8f, 0.8f + shakeIntensity * 1.2f); // ¡SÚPER INTENSO!
         }
-        Debug.Log($"Collision at point: {collisionPoint} with force: {collisionForce}");
+
     }
     
     [PunRPC]
@@ -191,8 +191,8 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
             rb.AddForce(direction * force, ForceMode.Impulse);
             if (photonView.IsMine && CameraShake.Instance != null)
             {
-                float shakeIntensity = Mathf.Clamp01(force / 15f);
-                CameraShake.Instance.ShakeCamera(shakeIntensity * 0.3f, 0.4f);
+                float shakeIntensity = Mathf.Clamp01(force / 10f); // Más sensible
+                CameraShake.Instance.ShakeCamera(0.4f + shakeIntensity * 0.6f, 0.6f + shakeIntensity * 0.8f); // ¡INTENSO!
             }
             PlayCollisionEffects(transform.position, force);
         }
@@ -243,7 +243,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
             {
                 rb.AddForce(networkKnockbackDirection * knockbackForce, ForceMode.Impulse);
             }
-            Debug.Log($"Network collision received at: {networkCollisionPoint} with damage: {networkCollisionDamage}");
+
             networkCollisionOccurred = false;
         }
     }

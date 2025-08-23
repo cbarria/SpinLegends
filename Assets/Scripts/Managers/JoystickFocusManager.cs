@@ -9,7 +9,7 @@ public class JoystickFocusManager : MonoBehaviour
     public Joystick[] joysticks;
     
     [Header("Settings")]
-    public float initializationDelay = 0.5f;
+    public float initializationDelay = 0.05f;
     public bool enableDebugLogs = true;
     
     [Header("Auto-find Settings")]
@@ -30,6 +30,8 @@ public class JoystickFocusManager : MonoBehaviour
         {
             FindAllJoysticks();
         }
+        // Ocultar joysticks al inicio SOLO si no hay jugadores locales activos
+        HideJoysticksIfNoLocalPlayer();
         StartCoroutine(InitializeJoysticksWithDelay());
     }
     
@@ -54,7 +56,7 @@ public class JoystickFocusManager : MonoBehaviour
         }
     }
     
-    void FindAllJoysticks()
+    public void FindAllJoysticks()
     {
         Joystick[] foundJoysticks = FindObjectsByType<Joystick>(FindObjectsSortMode.None);
         if (foundJoysticks.Length > 0)
@@ -63,10 +65,128 @@ public class JoystickFocusManager : MonoBehaviour
             if (enableDebugLogs)
                 Debug.Log($"🎮 Found {joysticks.Length} joysticks in scene");
         }
-        else if (enableDebugLogs)
+        else 
         {
-            Debug.LogWarning("⚠️ No joysticks found in scene");
+            // Búsqueda más profunda en Canvas (incluyendo inactivos)
+            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+            foreach (Canvas canvas in canvases)
+            {
+                Joystick[] canvasJoysticks = canvas.GetComponentsInChildren<Joystick>(true);
+                if (canvasJoysticks.Length > 0)
+                {
+                    joysticks = canvasJoysticks;
+                    if (enableDebugLogs)
+                        Debug.Log($"🎮 Found {canvasJoysticks.Length} joysticks in canvas {canvas.name} (including inactive)");
+                    break;
+                }
+            }
+            
+            if (joysticks == null || joysticks.Length == 0)
+            {
+                if (enableDebugLogs)
+                    Debug.LogWarning("⚠️ No joysticks found in scene");
+            }
         }
+    }
+    
+    public void ForceShowJoysticks()
+    {
+        FindAllJoysticks();
+        
+        if (joysticks != null)
+        {
+            foreach (Joystick joystick in joysticks)
+            {
+                if (joystick != null)
+                {
+                    joystick.gameObject.SetActive(true);
+                    
+                    // Hacer funcional inmediatamente sin delays
+                    InitializeSingleJoystick(joystick);
+                    
+                    // Activar focus inmediato (sin coroutine)
+                    if (EventSystem.current != null)
+                    {
+                        var rect = joystick.GetComponent<RectTransform>();
+                        if (rect != null)
+                        {
+                            Vector2 joystickCenter = rect.position;
+                            PointerEventData eventData = new PointerEventData(EventSystem.current)
+                            {
+                                position = joystickCenter,
+                                button = PointerEventData.InputButton.Left
+                            };
+                            ExecuteEvents.Execute(joystick.gameObject, eventData, ExecuteEvents.pointerDownHandler);
+                            ExecuteEvents.Execute(joystick.gameObject, eventData, ExecuteEvents.pointerUpHandler);
+                        }
+                    }
+                    
+                    if (enableDebugLogs)
+                        Debug.Log($"🎮⚡ Joystick forzado y activado inmediatamente: {joystick.name}");
+                }
+            }
+        }
+    }
+    
+    public void HideAllJoysticks()
+    {
+        if (joysticks == null || joysticks.Length == 0)
+        {
+            FindAllJoysticks();
+        }
+        
+        foreach (Joystick joystick in joysticks)
+        {
+            if (joystick != null)
+            {
+                joystick.gameObject.SetActive(false);
+                if (enableDebugLogs)
+                    Debug.Log($"🎮❌ Joystick ocultado: {joystick.name}");
+            }
+        }
+    }
+    
+    public void HideJoysticksIfNoLocalPlayer()
+    {
+        // Verificar si hay un jugador local activo
+        var localPlayer = FindLocalPlayer();
+        if (localPlayer != null)
+        {
+            if (enableDebugLogs)
+                Debug.Log($"🎮✅ Jugador local encontrado, NO ocultando joysticks");
+            return;
+        }
+        
+        if (enableDebugLogs)
+            Debug.Log($"🎮❌ No hay jugador local, ocultando joysticks");
+        
+        if (joysticks == null || joysticks.Length == 0)
+        {
+            FindAllJoysticks();
+        }
+        
+        foreach (Joystick joystick in joysticks)
+        {
+            if (joystick != null)
+            {
+                joystick.gameObject.SetActive(false);
+                if (enableDebugLogs)
+                    Debug.Log($"🎮❌ Joystick ocultado al inicio: {joystick.name}");
+            }
+        }
+    }
+    
+    PlayerController FindLocalPlayer()
+    {
+        var players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var player in players)
+        {
+            if (player != null && player.photonView != null && player.photonView.IsMine)
+            {
+                return player;
+            }
+        }
+        return null;
     }
     
     IEnumerator InitializeJoysticksWithDelay()
@@ -140,10 +260,11 @@ public class JoystickFocusManager : MonoBehaviour
     void InitializeSingleJoystick(Joystick joystick)
     {
         if (joystick == null) return;
-        if (!joystick.gameObject.activeInHierarchy)
-        {
-            joystick.gameObject.SetActive(true);
-        }
+        // NO activar automáticamente - solo cuando el player spawns
+        // if (!joystick.gameObject.activeInHierarchy)
+        // {
+        //     joystick.gameObject.SetActive(true);
+        // }
         Canvas canvas = joystick.GetComponentInParent<Canvas>();
         if (canvas == null)
         {
@@ -239,10 +360,7 @@ public class JoystickFocusManager : MonoBehaviour
         {
             foreach (Joystick joystick in joysticks)
             {
-                if (joystick != null && (Mathf.Abs(joystick.Horizontal) > 0.1f || Mathf.Abs(joystick.Vertical) > 0.1f))
-                {
-                    Debug.Log($"🎮 Joystick Input - {joystick.name}: H={joystick.Horizontal:F2}, V={joystick.Vertical:F2}");
-                }
+                // Log removido para mejor rendimiento
             }
         }
     }

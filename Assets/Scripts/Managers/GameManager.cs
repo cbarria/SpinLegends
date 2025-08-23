@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Photon.Pun;
 
 public class GameManager : MonoBehaviour
 {
@@ -35,11 +36,36 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         SetupUI();
+        
+        // Verificar si existe HealthBarManager
+        var healthBarManager = FindFirstObjectByType<HealthBarManager>();
+        if (healthBarManager == null)
+        {
+            Debug.LogWarning("🏥 HealthBarManager not found. Creating one automatically...");
+            CreateHealthBarManager();
+        }
+        else
+        {
+            Debug.Log("🏥 HealthBarManager found!");
+        }
+        
         networkManager = FindFirstObjectByType<NetworkManager>();
         if (networkManager == null)
         {
             Debug.LogWarning("NetworkManager not found. Creating one automatically...");
             CreateNetworkManager();
+        }
+        
+        // Verificar si existe ScoreManager
+        var scoreManager = FindFirstObjectByType<ScoreManager>();
+        if (scoreManager == null)
+        {
+            Debug.LogWarning("🏆 ScoreManager not found. Creating one automatically...");
+            CreateScoreManager();
+        }
+        else
+        {
+            Debug.Log("🏆 ScoreManager found!");
         }
         // Configura slider si existe
         if (healthBar != null)
@@ -65,6 +91,23 @@ public class GameManager : MonoBehaviour
             networkManager.spawnPoints = spawnPoints;
         }
         Debug.Log("NetworkManager created automatically");
+    }
+    
+    void CreateHealthBarManager()
+    {
+        GameObject healthBarManagerObj = new GameObject("HealthBarManager");
+        var healthBarManager = healthBarManagerObj.AddComponent<HealthBarManager>();
+        Debug.Log("🏥 HealthBarManager created automatically");
+    }
+    
+    void CreateScoreManager()
+    {
+        GameObject scoreManagerObj = new GameObject("ScoreManager");
+        var scoreManager = scoreManagerObj.AddComponent<ScoreManager>();
+        // Agregar PhotonView para RPCs - NO asignar ViewID manualmente
+        var photonView = scoreManagerObj.AddComponent<PhotonView>();
+        // PhotonNetwork asignará automáticamente un ViewID válido
+        Debug.Log("🏆 ScoreManager created automatically");
     }
 
     void SetupUI()

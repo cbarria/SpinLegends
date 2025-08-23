@@ -123,52 +123,23 @@ public class PlayerSpawnManager : MonoBehaviourPun
     // Master-authoritative spawn for any actor (uses RoomObject so late joiners always get it)
     public void SpawnPlayerForActor(int actorNumber)
     {
+        Debug.Log($"🎯 SPAWN: SpawnPlayerForActor llamado para player {actorNumber}");
+        
         if (!PhotonNetwork.IsMasterClient)
         {
             Debug.LogWarning("SpawnPlayerForActor solo debe llamarlo el MasterClient");
             return;
         }
+        
+        Debug.Log($"✅ SPAWN: Soy Master Client, continuando spawn para player {actorNumber}");
         if (!ResourceExists(playerPrefabName))
         {
             Debug.LogError($"❌ Resources.Load no encontró prefab '{playerPrefabName}'. Asegúrate de tener Assets/Resources/{playerPrefabName}.prefab");
             return;
         }
-        // Limpiar restos: si por alguna razón quedó un objeto para ese actor, destruirlo
-        var existing = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-        foreach (var pc in existing)
-        {
-            if (pc != null && pc.photonView != null && pc.photonView.OwnerActorNr == actorNumber)
-            {
-                PhotonNetwork.Destroy(pc.gameObject);
-            }
-        }
-        if (HasPlayerObject(actorNumber))
-        {
-            Debug.Log($"↩️ Ya existe objeto de jugador para actor {actorNumber}, no se crea otro.");
-            return;
-        }
-        Transform spawnPoint = GetSpawnPoint(actorNumber);
-        if (spawnPoint == null)
-        {
-            Debug.LogError("No spawn point available!");
-            return;
-        }
-        GameObject playerObj = PhotonNetwork.InstantiateRoomObject(playerPrefabName, spawnPoint.position, spawnPoint.rotation);
-        if (playerObj == null)
-        {
-            Debug.LogError("Failed to instantiate room-owned player!");
-            return;
-        }
-        PhotonView pv = playerObj.GetComponent<PhotonView>();
-        if (pv == null)
-        {
-            Debug.LogError("❌ Room player object sin PhotonView");
-            return;
-        }
-        pv.TransferOwnership(actorNumber);
-        string playerName = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber)?.NickName ?? "Player" + actorNumber;
-        playerObj.name = playerName;
-        Debug.Log($"✅ Master creó RoomObject para actor {actorNumber} con ViewID={pv.ViewID} y transfirió ownership");
+        // Simplificar: crear directamente, PhotonNetwork maneja duplicados automáticamente
+        Debug.Log($"🚀 Creando player {actorNumber} directamente (sin limpieza previa)");
+        SpawnPlayerForActorInternal(actorNumber);
     }
     
     bool HasPlayerObject(int actorNumber)
@@ -188,6 +159,42 @@ public class PlayerSpawnManager : MonoBehaviourPun
     {
         var res = Resources.Load<GameObject>(prefabName);
         return res != null;
+    }
+
+
+
+    public void SpawnPlayerForActorInternal(int actorNumber)
+    {
+        Debug.Log($"🔧 SpawnPlayerForActorInternal iniciado para player {actorNumber}");
+        if (HasPlayerObject(actorNumber))
+        {
+            Debug.Log($"↩️ Ya existe objeto de jugador para player {actorNumber}, no se crea otro.");
+            return;
+        }
+        Debug.Log($"✅ No hay objeto existente, creando nuevo para player {actorNumber}");
+        Transform spawnPoint = GetSpawnPoint(actorNumber);
+        if (spawnPoint == null)
+        {
+            Debug.LogError($"❌ No hay spawn points disponibles para actor {actorNumber}");
+            return;
+        }
+        GameObject playerObj = PhotonNetwork.InstantiateRoomObject(playerPrefabName, spawnPoint.position, spawnPoint.rotation);
+        if (playerObj == null)
+        {
+            Debug.LogError($"❌ No se pudo instanciar prefab '{playerPrefabName}' para actor {actorNumber}");
+            return;
+        }
+        var pv = playerObj.GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogError($"❌ Prefab '{playerPrefabName}' no tiene PhotonView!");
+            PhotonNetwork.Destroy(playerObj);
+            return;
+        }
+        pv.TransferOwnership(actorNumber);
+        string playerName = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber)?.NickName ?? "Player" + actorNumber;
+        playerObj.name = playerName;
+        Debug.Log($"✅ Master creó RoomObject para player {actorNumber} con ViewID={pv.ViewID} y transfirió ownership");
     }
     
     public void RespawnPlayer(int playerId)

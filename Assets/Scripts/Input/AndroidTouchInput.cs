@@ -15,7 +15,6 @@ public class AndroidTouchInput : MonoBehaviour
     public bool ensureGraphicRaycaster = true;
     
     private EventSystem eventSystem;
-    private bool isInitialized = false;
     
     void Awake()
     {

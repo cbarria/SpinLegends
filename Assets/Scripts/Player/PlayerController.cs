@@ -5,16 +5,19 @@ using Photon.Realtime;
 public class PlayerController : MonoBehaviourPun, IPunObservable
 {
     [Header("Spinning Top Settings")]
-    public float spinSpeed = 1000f;
-    public float moveSpeed = 5f;
-    public float jumpForce = 10f;
+    public float spinSpeed = 2500f; // ¡GIRO EXTREMO!
+    public float moveSpeed = 550000f; // ¡DESPLAZAMIENTO PERFECTO - 550K VELOCIDAD!
+    public float jumpForce = 30f; // ¡Saltos súper épicos!
     public float maxHealth = 100f;
     
+    [Header("Fall Detection")]
+    public float fallDeathHeight = -5f; // Altura mínima antes de morir por caída
+    
     [Header("Network Settings")]
-    public float interpolationSpeed = 30f; // Aumentado para más suavidad
-    public float rotationInterpolationSpeed = 35f; // Aumentado para más suavidad
-    public float velocityInterpolationSpeed = 25f; // Aumentado para más suavidad
-    public float spinInterpolationSpeed = 40f; // Nueva variable para interpolación del giro
+    public float interpolationSpeed = 50f; // Aumentado aún más para mejor responsividad
+    public float rotationInterpolationSpeed = 60f; // Aumentado aún más para mejor responsividad
+    public float velocityInterpolationSpeed = 45f; // Aumentado aún más para mejor responsividad
+    public float spinInterpolationSpeed = 80f; // Aumentado significativamente para animación más fluida
     
     [Header("Components")]
     private Rigidbody rb;
@@ -45,6 +48,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            // SIN RESISTENCIA - movimiento súper libre
+            rb.linearDamping = 0f; // CERO resistencia!
+            rb.angularDamping = 0f; // CERO resistencia angular!
         }
         
         if (spinningTop == null)
@@ -66,6 +72,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             {
                 GameManager.Instance.SetLocalPlayer(this);
             }
+            
+                    // Mostrar joystick cuando spawns (casi inmediato)
+        Invoke(nameof(ShowJoystick), 0.1f);
         }
         else
         {
@@ -89,20 +98,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         
         if (joystick == null)
         {
-            Debug.LogError("Joystick not found or not assigned in PlayerController. Is it in the scene and active?");
             // Intentar encontrar el joystick después de un delay
             Invoke(nameof(RetryFindJoystick), 2f);
         }
         else
         {
-            Debug.Log("Joystick asignado correctamente: " + joystick.name);
-            Debug.Log($"Joystick layer: {joystick.gameObject.layer}, Active: {joystick.gameObject.activeInHierarchy}");
-            
             // Verificar que el JoystickFocusManager esté configurado
             EnsureJoystickFocusManager();
-            
-            // Test del joystick después de un pequeño delay
-            Invoke(nameof(TestJoystick), 1f);
         }
     }
     
@@ -111,33 +113,35 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Solo procesar input para el jugador local
         if (!photonView.IsMine)
         {
-            // Visual: girar suavemente el spinningTop para jugadores remotos
+            // Visual: giro perfecto para jugadores remotos
             if (spinningTop != null && isSpinning)
             {
-                float visualSpin = Mathf.Max(200f, spinSpeed * 0.6f);
+                float visualSpin = 1500f; // Giro rápido pero no mareante
                 spinningTop.Rotate(0f, visualSpin * Time.deltaTime, 0f, Space.Self);
             }
-            // Si soy Master, garantizar respawn continuo de cualquier jugador muerto (incluye remotos)
-            if (PhotonNetwork.IsMasterClient && currentHealth <= 0f && !respawnQueued)
-            {
-                respawnQueued = true;
-                var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
-                if (spawnMgr != null)
-                {
-                    spawnMgr.SpawnPlayerForActor(photonView.OwnerActorNr);
-                    PhotonNetwork.Destroy(gameObject);
-                }
-            }
+
             return;
         }
         
-        // Solo salto y giro visual si lo necesitas
-        // HandleInput();
-        // UpdateSpinEffect();
-        // Si quieres mantener el salto en Update, puedes dejarlo aquí:
+        // Giro visual igual para jugador LOCAL
+        if (spinningTop != null && isSpinning)
+        {
+            float visualSpin = 1500f; // ¡MISMO GIRO PERFECTO que los remotos!
+            spinningTop.Rotate(0f, visualSpin * Time.deltaTime, 0f, Space.Self);
+        }
+        
+        // Salto
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
             Jump();
+        }
+        
+        // Detección de caída por altura
+        if (transform.position.y < fallDeathHeight)
+        {
+            // Muerte por caída - forzar respawn inmediato
+            currentHealth = 0f;
+            Die();
         }
     }
     
@@ -147,12 +151,12 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         
         if (isSpinning)
         {
-            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, spinSpeed, Time.fixedDeltaTime * 5f);
+            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, spinSpeed * 0.3f, Time.fixedDeltaTime * 15f); // Torque reducido para giro visual controlado
             rb.AddTorque(Vector3.up * currentSpinSpeed, ForceMode.Force);
         }
         else
         {
-            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, 0f, Time.fixedDeltaTime * 10f);
+            currentSpinSpeed = Mathf.Lerp(currentSpinSpeed, 0f, Time.fixedDeltaTime * 20f); // SÚPER RÁPIDO
         }
 
         HandlePhysicsMovement();
@@ -169,19 +173,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             horizontal = joystick.Horizontal;
             vertical = joystick.Vertical;
             
-            // Debug para Android (solo cuando hay input significativo)
-            if (Application.platform == RuntimePlatform.Android && (Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f))
-            {
-                Debug.Log($"Joystick Input - H: {horizontal:F2}, V: {vertical:F2}");
-            }
-            
-            // Aplicar deadzone para evitar drift
-            float joystickMagnitude = new Vector2(horizontal, vertical).magnitude;
-            if (joystickMagnitude < 0.1f)
-            {
-                horizontal = 0f;
-                vertical = 0f;
-            }
+            // Sin deadzone - respuesta instantánea total
         }
         else
         {
@@ -190,10 +182,11 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             vertical = Input.GetAxis("Vertical");
         }
         
-        // Solo mover si hay input significativo
-        if (Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f)
+        // Movimiento SÚPER DIRECTO - sin umbrales
+        if (horizontal != 0f || vertical != 0f)
         {
-            Vector3 movement = new Vector3(horizontal, 0, vertical) * moveSpeed * Time.fixedDeltaTime;
+            // Movimiento directo y súper rápido - multiplicador extra para más velocidad
+            Vector3 movement = new Vector3(horizontal, 0, vertical) * moveSpeed * Time.fixedDeltaTime * 2f; // 2X más rápido
             rb.MovePosition(rb.position + movement);
         }
     }
@@ -310,13 +303,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     void PlayCollisionEffects(Vector3 collisionPoint)
     {
-        // Aquí puedes agregar efectos de partículas, sonidos, etc.
-                    Debug.Log($"Collision at point: {collisionPoint} with damage: {currentHealth}");
-        
-        // Shake de cámara si es el jugador local
+        // Shake de cámara EXPLOSIVO si es el jugador local
         if (photonView.IsMine && CameraShake.Instance != null)
         {
-            CameraShake.Instance.ShakeCamera(0.2f, 0.3f);
+            CameraShake.Instance.ShakeCamera(0.5f, 0.8f); // ¡SHAKE SÚPER INTENSO!
         }
     }
     
@@ -324,7 +314,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     {
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
-        Debug.Log($"Player {photonView.Owner.NickName} received {damage} damage. Health: {currentHealth}/{maxHealth}");
         if (currentHealth <= 0)
         {
             Die();
@@ -335,7 +324,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             if (CameraShake.Instance != null)
             {
-                CameraShake.Instance.ShakeCamera(0.3f, 0.5f);
+                CameraShake.Instance.ShakeCamera(0.6f, 1.0f); // ¡SHAKE EXPLOSIVO al recibir daño!
             }
         }
     }
@@ -347,7 +336,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     }
 
     private int lastHitByActor;
-    private bool respawnQueued;
 
     [PunRPC]
     public void SetLastHitByRPC(int attackerActor)
@@ -357,17 +345,58 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
 
     void Die()
     {
-        Debug.Log($"Jugador {photonView.Owner.NickName} ha muerto!");
+        // Liberar spawn point
+        var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
+        if (spawnMgr != null)
+        {
+            spawnMgr.ReleaseSpawnPoint(photonView.OwnerActorNr);
+        }
+        
         if (photonView.IsMine)
         {
             if (GameManager.Instance != null) GameManager.Instance.OnLocalPlayerDied();
+            
+            // Registrar muerte en ScoreManager con ViewID
+            if (ScoreManager.Instance != null)
+            {
+                if (lastHitByActor != 0)
+                {
+                    // Fue un kill - registrar kill y death
+                    ScoreManager.Instance.RegisterKill(lastHitByActor, photonView.OwnerActorNr, photonView.ViewID);
+                    Debug.Log($"💀 KILL REGISTRADO: Player {lastHitByActor} mató a Player {photonView.OwnerActorNr} (ViewID:{photonView.ViewID})");
+                }
+                else
+                {
+                    // Muerte por caída/suicidio - solo death
+                    ScoreManager.Instance.RegisterDeath(photonView.OwnerActorNr, photonView.ViewID);
+                    Debug.Log($"💀 DEATH REGISTRADA: Player {photonView.OwnerActorNr} murió (ViewID:{photonView.ViewID})");
+                }
+                
+                // Mostrar scoreboard cada muerte
+                ScoreManager.Instance.PrintScoreboard();
+            }
+            
+            // Dar puntos solo si fue por combate (legacy)
             if (lastHitByActor != 0)
             {
                 photonView.RPC("RequestKOScoreRPC", RpcTarget.MasterClient, lastHitByActor, photonView.OwnerActorNr);
             }
-            respawnQueued = true;
+            
+            // SIEMPRE hacer respawn, sin importar la causa de muerte
             photonView.RPC("NotifyDeathRPC", RpcTarget.MasterClient, photonView.OwnerActorNr);
-            photonView.RPC("RequestRespawnRPC", RpcTarget.MasterClient, photonView.OwnerActorNr, 3f);
+            // Ocultar joystick cuando muere
+            HideJoystick();
+            
+            // Solicitar respawn directamente al NetworkManager (sin RPC)
+            var networkManager = NetworkManager.Instance;
+            if (networkManager != null)
+            {
+                networkManager.RequestRespawn(photonView.OwnerActorNr, 0.1f);
+            }
+            else
+            {
+                Debug.LogError("❌ RESPAWN: No se encontró NetworkManager!");
+            }
             StartCoroutine(DestroyNextFrame());
         }
     }
@@ -384,30 +413,71 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     [PunRPC]
     void NotifyDeathRPC(int actorNumber)
     {
-        // Por ahora solo para trazas/posibles futuras reglas. El Master no hace nada adicional aquí.
-        if (PhotonNetwork.IsMasterClient)
-        {
-            Debug.Log($"🔔 Master recibió muerte de actor {actorNumber}");
-        }
+        // Master recibe notificación de muerte
     }
 
-    [PunRPC]
-    void RequestRespawnRPC(int actorNumber, float delaySeconds, PhotonMessageInfo info)
-    {
-        if (!PhotonNetwork.IsMasterClient)
-        {
-            return;
-        }
-        StartCoroutine(MasterRespawnCoroutine(actorNumber, delaySeconds));
-    }
 
-    System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
+
+    void HideJoystick()
     {
-        yield return new WaitForSeconds(delaySeconds);
-        var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
-        if (spawnMgr != null)
+        if (!photonView.IsMine) return; // Solo para el jugador local
+        
+        var joysticks = FindObjectsByType<Joystick>(FindObjectsSortMode.None);
+        foreach (var joystick in joysticks)
         {
-            spawnMgr.SpawnPlayerForActor(actorNumber);
+            if (joystick != null)
+            {
+                joystick.gameObject.SetActive(false);
+                Debug.Log($"🎮❌ Joystick ocultado: {joystick.name}");
+            }
+        }
+    }
+    
+    void ShowJoystick()
+    {
+        if (!photonView.IsMine) return; // Solo para el jugador local
+        
+        Debug.Log($"🎮🔍 Buscando joysticks para mostrar...");
+        
+        // Usar JoystickFocusManager para forzar la activación
+        var joystickFocusManager = FindFirstObjectByType<JoystickFocusManager>();
+        if (joystickFocusManager != null)
+        {
+            Debug.Log($"🎮🔄 Forzando activación de joysticks via JoystickFocusManager");
+            joystickFocusManager.ForceShowJoysticks();
+        }
+        else
+        {
+            Debug.LogWarning($"🎮⚠️ JoystickFocusManager no encontrado, búsqueda manual...");
+            // Fallback: búsqueda manual
+            var joysticks = FindObjectsByType<Joystick>(FindObjectsSortMode.None);
+            Debug.Log($"🎮📊 Encontrados {joysticks.Length} joysticks");
+            
+            if (joysticks.Length == 0)
+            {
+                Debug.LogWarning($"🎮⚠️ No se encontraron joysticks, buscando en Canvas...");
+                // Búsqueda más profunda en Canvas
+                Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+                foreach (Canvas canvas in canvases)
+                {
+                    Joystick[] canvasJoysticks = canvas.GetComponentsInChildren<Joystick>(true);
+                    if (canvasJoysticks.Length > 0)
+                    {
+                        Debug.Log($"🎮🔍 Encontrados {canvasJoysticks.Length} joysticks en canvas {canvas.name}");
+                        joysticks = canvasJoysticks;
+                        break;
+                    }
+                }
+            }
+            
+            foreach (var joystick in joysticks)
+            {
+                if (joystick != null)
+                {
+                    joystick.gameObject.SetActive(true);
+                    Debug.Log($"🎮✅ Joystick mostrado: {joystick.name}");
+                }
+            }
         }
     }
 
@@ -435,25 +505,14 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     // Propiedad pública para acceder a la salud máxima
     public float MaxHealth => maxHealth;
     
-    // Método para debug del joystick
+    // Método para debug del joystick (logs removidos)
     public void TestJoystick()
     {
-        if (joystick != null)
-        {
-            Debug.Log($"Joystick Test - Name: {joystick.name}, Active: {joystick.gameObject.activeInHierarchy}");
-            Debug.Log($"Joystick Test - H: {joystick.Horizontal:F2}, V: {joystick.Vertical:F2}");
-            Debug.Log($"Joystick Test - Layer: {joystick.gameObject.layer}, Canvas: {joystick.GetComponentInParent<Canvas>()?.name}");
-        }
-        else
-        {
-            Debug.LogError("Joystick is null in TestJoystick()");
-        }
+        // Test silencioso
     }
     
     void RetryFindJoystick()
     {
-        Debug.Log("🔄 Reintentando encontrar joystick...");
-        
         // Buscar joysticks nuevamente
         if (joystick == null)
         {
@@ -468,12 +527,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         
         if (joystick != null)
         {
-            Debug.Log("✅ Joystick encontrado en reintento: " + joystick.name);
             EnsureJoystickFocusManager();
-        }
-        else
-        {
-            Debug.LogError("❌ Joystick no encontrado en reintento");
         }
     }
     
@@ -483,8 +537,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         JoystickFocusManager focusManager = FindFirstObjectByType<JoystickFocusManager>();
         if (focusManager == null)
         {
-            Debug.LogWarning("⚠️ JoystickFocusManager no encontrado. Creando uno...");
-            
             // Crear el JoystickFocusManager si no existe
             GameObject managerObj = new GameObject("JoystickFocusManager");
             focusManager = managerObj.AddComponent<JoystickFocusManager>();
@@ -493,10 +545,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             focusManager.joysticks = new Joystick[] { joystick };
             focusManager.forceJoystickFocus = true;
             focusManager.initializationDelay = 0.5f;
-        }
-        else
-        {
-            Debug.Log("✅ JoystickFocusManager encontrado y configurado");
         }
     }
     
@@ -543,11 +591,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 // Interpolación de rotación más suave
                 transform.rotation = Quaternion.Slerp(transform.rotation, networkRotation, deltaTime * rotationInterpolationSpeed);
                 
-                // Interpolación de velocidad para física más suave
+                // Interpolación de velocidad COMENTADA - estaba limitando movimiento local
+                /*
                 if (rb != null)
                 {
                     rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, networkVelocity, deltaTime * velocityInterpolationSpeed);
                 }
+                */
                 
                 // Sincronizar estado de giro
                 if (networkIsSpinning != isSpinning)

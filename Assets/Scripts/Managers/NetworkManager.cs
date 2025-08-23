@@ -50,13 +50,15 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
         if (pv == null) pv = gameObject.AddComponent<PhotonView>();
     }
 
-    void OnEnable()
+    public override void OnEnable()
     {
+        base.OnEnable();
         PhotonNetwork.AddCallbackTarget(this);
     }
 
-    void OnDisable()
+    public override void OnDisable()
     {
+        base.OnDisable();
         PhotonNetwork.RemoveCallbackTarget(this);
     }
     
@@ -322,5 +324,94 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
     public void RespawnPlayer()
     {
         Debug.Log("RespawnPlayer legacy call ignored: Master handles respawn.");
+    }
+
+    // RESPAWN SYSTEM - Moved from PlayerController to persist across player destruction
+    public void RequestRespawn(int actorNumber, float delaySeconds)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        
+        Debug.Log($"🔔 RESPAWN: NetworkManager recibió solicitud para player {actorNumber}");
+        StartCoroutine(MasterRespawnCoroutine(actorNumber, delaySeconds));
+    }
+
+    System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
+    {
+        Debug.Log($"⏳ RESPAWN: Iniciando coroutine para player {actorNumber}, esperando {delaySeconds}s");
+        
+        try
+        {
+            yield return new WaitForSecondsRealtime(delaySeconds);
+            Debug.Log($"✅ RESPAWN: Tiempo de espera completado para player {actorNumber}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ RESPAWN: Error en WaitForSecondsRealtime: {e.Message}");
+            yield break;
+        }
+        
+        Debug.Log($"🔍 RESPAWN: Verificando si player {actorNumber} está en la sala...");
+        
+        // Verificar que el player aún está en la sala
+        if (PhotonNetwork.CurrentRoom == null)
+        {
+            Debug.LogError($"❌ RESPAWN: No hay CurrentRoom!");
+            yield break;
+        }
+        
+        if (PhotonNetwork.CurrentRoom.GetPlayer(actorNumber) == null)
+        {
+            Debug.LogWarning($"⚠️ RESPAWN: Player {actorNumber} ya no está en la sala");
+            yield break;
+        }
+        
+        Debug.Log($"✅ RESPAWN: Player {actorNumber} aún está en la sala");
+        
+        Debug.Log($"🔍 RESPAWN: Verificando PlayerSpawnManager...");
+        if (spawnManager != null)
+        {
+            Debug.Log($"🔄 RESPAWN: Ejecutando respawn para player {actorNumber}");
+            spawnManager.SpawnPlayerForActor(actorNumber);
+            Debug.Log($"✅ RESPAWN: SpawnPlayerForActor llamado para player {actorNumber}");
+        }
+        else
+        {
+            Debug.LogError($"❌ RESPAWN: No se encontró PlayerSpawnManager!");
+        }
+        
+        Debug.Log($"🎉 RESPAWN: Coroutine completada para player {actorNumber}");
+    }
+
+    // SPAWN CONTINUATION - Moved from PlayerSpawnManager to persist across destruction
+    public System.Collections.IEnumerator WaitAndContinueSpawn(int actorNumber, PlayerSpawnManager spawnMgr)
+    {
+        Debug.Log($"⏰ NetworkManager WaitAndContinueSpawn iniciado para player {actorNumber}");
+        
+        // Esperar un frame para que la destrucción se complete
+        yield return null;
+        Debug.Log($"⏰ NetworkManager esperando 0.1s para player {actorNumber}");
+        
+        // Usar WaitForSecondsRealtime para que no se pause con cambios de foco
+        yield return new WaitForSecondsRealtime(0.1f);
+        
+        Debug.Log($"🔄 NetworkManager continuando spawn después de limpieza para player {actorNumber}");
+        
+        // Verificar que aún estamos en la sala
+        if (!PhotonNetwork.InRoom)
+        {
+            Debug.LogWarning($"⚠️ Ya no estamos en sala, cancelando spawn para player {actorNumber}");
+            yield break;
+        }
+        
+        if (spawnMgr != null)
+        {
+            Debug.Log($"🔧 Llamando SpawnPlayerForActorInternal para player {actorNumber}");
+            spawnMgr.SpawnPlayerForActorInternal(actorNumber);
+            Debug.Log($"✅ NetworkManager WaitAndContinueSpawn completado para player {actorNumber}");
+        }
+        else
+        {
+            Debug.LogError($"❌ PlayerSpawnManager se destruyó antes de completar spawn para player {actorNumber}");
+        }
     }
 } 
