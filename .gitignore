@@ -73,6 +73,9 @@ mono_crash.*
 *.unitypackage.meta
 *.app
 
+# Unity Burst Debug Information (DoNotShip)
+*_BurstDebugInformation_DoNotShip/
+
 # Crashlytics generated file
 crashlytics-build.properties
 

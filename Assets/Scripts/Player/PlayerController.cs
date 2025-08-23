@@ -62,9 +62,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Solo configurar controles para el jugador local
         if (photonView.IsMine)
         {
-            // Configurar joystick con retraso para asegurar que el QuickJoystickFix esté listo
-            Invoke(nameof(SetupJoystick), 1.5f);
-            
             // Hacer que el spinner gire desde el inicio
             StartSpin();
             // Vincular UI global al jugador local inmediatamente
@@ -73,8 +70,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 GameManager.Instance.SetLocalPlayer(this);
             }
             
-                    // Mostrar joystick cuando spawns (casi inmediato)
-        Invoke(nameof(ShowJoystick), 0.1f);
+            // ANDROID FIX: Setup y Show joystick en secuencia correcta
+            Invoke(nameof(SetupJoystick), 0.1f);  // Primero setup
+            Invoke(nameof(ShowJoystick), 0.3f);   // Luego show con delay
         }
         else
         {

@@ -51,6 +51,8 @@ MonoBehaviour:
   - RPC_SyncScore
   - SetLastHitByRPC
   - NotifyDeathRPC
+  - RPC_SyncDeathStats
+  - RPC_SyncKillStats
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

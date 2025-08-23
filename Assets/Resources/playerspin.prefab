@@ -221,6 +221,7 @@ MonoBehaviour:
   moveSpeed: 5
   jumpForce: 10
   maxHealth: 100
+  fallDeathHeight: -5
   interpolationSpeed: 20
   rotationInterpolationSpeed: 15
   velocityInterpolationSpeed: 20

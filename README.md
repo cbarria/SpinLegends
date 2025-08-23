@@ -12,7 +12,7 @@ Fast, phone‑friendly arena battles with networked spinning tops. Built with Un
 
 ## Quick Start
 1) Unity 2022.3 LTS+, Photon PUN (set your AppId)
-2) Open the scene, press Play (PC) or Build & Run (Android)
+2) Open the scene at **Assets/Scenes/SpinLegends.unity**, press Play (PC) or Build & Run (Android)
 3) Controls: Joystick to move, Spin to start, Jump to hop
 
 ## What’s in the box
