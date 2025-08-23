@@ -334,6 +334,13 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
         Debug.Log($"🔔 RESPAWN: NetworkManager recibió solicitud para player {actorNumber}");
         StartCoroutine(MasterRespawnCoroutine(actorNumber, delaySeconds));
     }
+    
+    [PunRPC]
+    void RequestRespawnRPC(int actorNumber, float delaySeconds)
+    {
+        Debug.Log($"📡 RESPAWN RPC: Master recibió solicitud de respawn para player {actorNumber}");
+        RequestRespawn(actorNumber, delaySeconds);
+    }
 
     System.Collections.IEnumerator MasterRespawnCoroutine(int actorNumber, float delaySeconds)
     {

@@ -406,15 +406,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Ocultar joystick cuando muere
             HideJoystick();
             
-            // Solicitar respawn directamente al NetworkManager (sin RPC) - COMO ANTES
+            // 🎯 RESPAWN VIA RPC: Cliente solicita respawn al Master
             var networkManager = NetworkManager.Instance;
-            if (networkManager != null)
+            if (networkManager != null && networkManager.photonView != null)
             {
-                networkManager.RequestRespawn(photonView.OwnerActorNr, 1f); // VOLVER AL DELAY ORIGINAL
+                Debug.Log($"📡 RESPAWN: Cliente {photonView.OwnerActorNr} solicitando respawn al Master via RPC");
+                networkManager.photonView.RPC("RequestRespawnRPC", RpcTarget.MasterClient, photonView.OwnerActorNr, 1f);
             }
             else
             {
-                Debug.LogError("❌ RESPAWN: No se encontró NetworkManager!");
+                Debug.LogError("❌ RESPAWN: No se encontró NetworkManager o PhotonView!");
             }
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
