@@ -117,9 +117,12 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         Vector3 otherKnockbackDirection = -knockbackDirection;
         float actualKnockbackForce = Mathf.Max(knockbackForce * 0.8f, knockbackForce * collisionForce);
         actualKnockbackForce = Mathf.Clamp(actualKnockbackForce, knockbackForce * 0.5f, knockbackForce * 2f); // Máximo 2X knockback
-        // Aplicar daño al otro jugador
-        otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
-        otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
+        // Aplicar daño al otro jugador - verificar que no esté siendo destruido
+        if (otherPlayer != null && otherPlayer.gameObject != null && otherPlayer.photonView != null && otherPlayer.photonView.ViewID != 0)
+        {
+            otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
+            otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
+        }
         if (rb == null) rb = GetComponent<Rigidbody>() ?? GetComponentInParent<Rigidbody>();
         if (rb != null)
         {

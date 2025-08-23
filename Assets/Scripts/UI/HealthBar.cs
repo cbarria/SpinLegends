@@ -60,6 +60,8 @@ public class HealthBar : MonoBehaviour
             currentHealth = targetPlayer.CurrentHealth;
             maxHealth = targetPlayer.MaxHealth;
             
+            Debug.Log($"🏥🔧 Initial health values: Current={currentHealth}, Max={maxHealth}");
+            
             // Configurar Canvas
             if (healthCanvas == null)
             {
@@ -109,28 +111,48 @@ public class HealthBar : MonoBehaviour
     
     void SetupUIComponents()
     {
-        // Buscar componentes UI creados por HealthBarManager
-        Image[] images = GetComponentsInChildren<Image>();
-        
-        if (images.Length >= 2)
+        // Buscar componentes UI creados por HealthBarManager por nombre específico
+        Transform backgroundTransform = transform.Find("Background");
+        if (backgroundTransform != null)
         {
-            healthBarBackground = images[0]; // Background (primer Image)
-            healthBarFill = images[1]; // Fill (segundo Image)
+            healthBarBackground = backgroundTransform.GetComponent<Image>();
             
-            Debug.Log($"🏥✅ UI Components found: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
-        }
-        else if (images.Length == 1)
-        {
-            healthBarFill = images[0];
-            Debug.Log($"🏥⚠️ Only one Image found: {healthBarFill.name}");
+            // Buscar el fill dentro del background
+            Transform fillTransform = backgroundTransform.Find("HealthFill");
+            if (fillTransform != null)
+            {
+                healthBarFill = fillTransform.GetComponent<Image>();
+                Debug.Log($"🏥✅ UI Components found by name: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+            }
+            else
+            {
+                Debug.LogError("🏥❌ HealthFill not found inside Background!");
+            }
         }
         else
         {
-            Debug.LogError("🏥❌ No Image components found in children!");
+            Debug.LogError("🏥❌ Background not found in children!");
+            
+            // Fallback: buscar por componentes
+            Image[] images = GetComponentsInChildren<Image>();
+            if (images.Length >= 2)
+            {
+                healthBarBackground = images[0];
+                healthBarFill = images[1];
+                Debug.Log($"🏥⚠️ Using fallback method: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+            }
         }
         
         // Buscar texto si existe
         healthText = GetComponentInChildren<TextMeshProUGUI>();
+        
+        // Verificar que el fill esté configurado correctamente
+        if (healthBarFill != null)
+        {
+            healthBarFill.type = Image.Type.Filled;
+            healthBarFill.fillMethod = Image.FillMethod.Horizontal;
+            Debug.Log($"🏥🔧 Fill configured: Type={healthBarFill.type}, Method={healthBarFill.fillMethod}, Amount={healthBarFill.fillAmount}");
+        }
     }
     
     void CreateHealthBarUI()
@@ -222,7 +244,14 @@ public class HealthBar : MonoBehaviour
         float healthPercentage = maxHealth > 0 ? currentHealth / maxHealth : 0f;
         
         // Actualizar fill amount
+        float oldFillAmount = healthBarFill.fillAmount;
         healthBarFill.fillAmount = healthPercentage;
+        
+        // Debug si cambió el fill amount
+        if (Mathf.Abs(oldFillAmount - healthPercentage) > 0.01f)
+        {
+            Debug.Log($"🏥🔄 Fill amount changed: {oldFillAmount:F2} → {healthPercentage:F2} (Health: {currentHealth:F0}/{maxHealth:F0})");
+        }
         
         // Actualizar color basado en la salud
         UpdateHealthColor(healthPercentage);
@@ -236,7 +265,7 @@ public class HealthBar : MonoBehaviour
         // Debug (reducido)
         if (Time.time - lastDebugTime > 2f) // Solo cada 2s
         {
-            Debug.Log($"HealthBar updated: {currentHealth:F0}/{maxHealth:F0} ({healthPercentage:P0})");
+            Debug.Log($"🏥📊 HealthBar update: {currentHealth:F0}/{maxHealth:F0} ({healthPercentage:P0}) - Fill: {(healthBarFill != null ? healthBarFill.fillAmount.ToString("F2") : "NULL")} - FillType: {(healthBarFill != null ? healthBarFill.type.ToString() : "NULL")}");
             lastDebugTime = Time.time;
         }
     }

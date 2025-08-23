@@ -320,9 +320,12 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             float collisionForce = collision.relativeVelocity.magnitude;
             float damage = collisionForce * (isSpinning ? 2f : 1f);
             
-            // Aplicar daño a través de la red
-            otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
-            otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
+            // Aplicar daño a través de la red - verificar que el objeto no esté siendo destruido
+            if (otherPlayer.gameObject != null && otherPlayer.photonView != null && otherPlayer.photonView.ViewID != 0)
+            {
+                otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
+                otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
+            }
             
             // Aplicar knockback
             Vector3 knockbackDirection = (transform.position - collision.transform.position).normalized;
