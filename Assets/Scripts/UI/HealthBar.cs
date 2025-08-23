@@ -36,7 +36,8 @@ public class HealthBar : MonoBehaviour
     
     void Start()
     {
-        InitializeHealthBar();
+        // Retrasar la inicialización para que el HealthBarManager configure el targetPlayer primero
+        Invoke(nameof(InitializeHealthBar), 0.1f);
     }
     
     void InitializeHealthBar()
@@ -52,6 +53,15 @@ public class HealthBar : MonoBehaviour
         if (targetPlayer == null)
         {
             targetPlayer = FindFirstObjectByType<PlayerController>();
+            Debug.Log("🏥⚠️ TargetPlayer was null, found automatically");
+        }
+        
+        // Si aún no hay targetPlayer, intentar más tarde
+        if (targetPlayer == null)
+        {
+            Debug.LogWarning("🏥❌ No PlayerController found, retrying in 0.5s...");
+            Invoke(nameof(InitializeHealthBar), 0.5f);
+            return;
         }
         
         if (targetPlayer != null)
@@ -328,6 +338,16 @@ public class HealthBar : MonoBehaviour
         if (healthCanvas != null)
         {
             healthCanvas.enabled = visible;
+        }
+    }
+    
+    // Método público para forzar la inicialización (llamado por HealthBarManager)
+    public void ForceInitialize()
+    {
+        if (!isInitialized)
+        {
+            Debug.Log("🏥🔄 Force initializing health bar...");
+            InitializeHealthBar();
         }
     }
 } 

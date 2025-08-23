@@ -195,6 +195,9 @@ public class HealthBarManager : MonoBehaviour
         // Agregar a la lista de health bars
         playerHealthBars[playerId] = healthBar;
         
+        // Forzar inicialización ahora que el targetPlayer está configurado
+        healthBar.ForceInitialize();
+        
         Debug.Log($"🏥✅ Health bar created successfully for {player.name} (Local: {isLocalPlayer}) at position {healthBarGO.transform.position}");
     }
     
