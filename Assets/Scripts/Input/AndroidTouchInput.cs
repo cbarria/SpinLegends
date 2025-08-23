@@ -44,7 +44,7 @@ public class AndroidTouchInput : MonoBehaviour
         {
             StartCoroutine(ForceTouchFocus());
         }
-        isInitialized = true;
+        // Touch input initialized
         if (enableTouchDebug) Debug.Log("✅ Input táctil inicializado correctamente");
         #endif
     }
@@ -128,7 +128,7 @@ public class AndroidTouchInput : MonoBehaviour
     void OnApplicationFocus(bool hasFocus)
     {
         #if UNITY_ANDROID
-        if (hasFocus && isInitialized)
+        if (hasFocus)
         {
             if (enableTouchDebug) Debug.Log("📱 App recuperó foco - re-inicializando input táctil");
             StartCoroutine(ReinitializeTouchInput());
