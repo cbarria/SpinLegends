@@ -6,7 +6,7 @@ using System.Collections.Generic; // Added for List
 public class SceneSetup : MonoBehaviour
 {
     [Header("Setup Settings")]
-    public bool autoSetupOnStart = true;
+    public bool autoSetupOnStart = false; // Desactivado para no interferir con el scoreboard
     
     // Variables de clase para compartir entre métodos
     private Canvas canvas;

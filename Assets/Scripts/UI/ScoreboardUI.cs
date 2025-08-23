@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,11 +32,21 @@ public class ScoreboardUI : MonoBehaviour
     
     void Awake()
     {
+        // Solo configurar referencias existentes, NO crear nada
         if (scoreboardPanel == null) scoreboardPanel = transform.Find("ScoreboardPanel")?.gameObject;
         if (playerListContainer == null) playerListContainer = transform.Find("ScoreboardPanel/PlayerListContainer");
         if (titleText == null) titleText = transform.Find("ScoreboardPanel/TitleText")?.GetComponent<TextMeshProUGUI>();
         if (toggleButton == null) toggleButton = transform.Find("ToggleButton")?.GetComponent<Button>();
-        
+    }
+    
+    void Start()
+    {
+        // Usar Invoke para asegurar que todos los componentes estén listos
+        Invoke(nameof(InitializeUI), 0.1f);
+    }
+    
+    void InitializeUI()
+    {
         // Crear UI si no existe
         if (scoreboardPanel == null) CreateScoreboardUI();
         
@@ -43,18 +54,21 @@ public class ScoreboardUI : MonoBehaviour
         if (toggleButton != null)
         {
             toggleButton.onClick.AddListener(ToggleScoreboard);
+            Debug.Log("🏆 Botón toggle configurado correctamente");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ Botón toggle NO encontrado");
         }
         
-        // Ocultar por defecto
+        // Ocultar por defecto - FORZAR que esté oculto
         if (scoreboardPanel != null)
         {
             scoreboardPanel.SetActive(false);
             isVisible = false;
+            Debug.Log("🏆 Scoreboard oculto por defecto");
         }
-    }
-    
-    void Start()
-    {
+        
         scoreManager = ScoreManager.Instance;
         if (scoreManager == null)
         {
@@ -92,16 +106,16 @@ public class ScoreboardUI : MonoBehaviour
         GraphicRaycaster raycaster = scoreboardPanel.AddComponent<GraphicRaycaster>();
         
         RectTransform panelRect = scoreboardPanel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(600, 400);
-        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.anchorMin = new Vector2(1, 0.5f);
+        panelRect.anchorMax = new Vector2(1, 0.5f);
+        panelRect.sizeDelta = new Vector2(350, 500);
+        panelRect.anchoredPosition = new Vector2(-175, 0);
         
         // Fondo del panel
         GameObject background = new GameObject("Background");
         background.transform.SetParent(scoreboardPanel.transform, false);
         Image bgImage = background.AddComponent<Image>();
-        bgImage.color = new Color(0, 0, 0, 0.9f);
+        bgImage.color = new Color(0, 0, 0, 0.7f);
         RectTransform bgRect = background.GetComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
         bgRect.anchorMax = Vector2.one;
@@ -112,31 +126,32 @@ public class ScoreboardUI : MonoBehaviour
         GameObject titleGO = new GameObject("TitleText");
         titleGO.transform.SetParent(scoreboardPanel.transform, false);
         titleText = titleGO.AddComponent<TextMeshProUGUI>();
-        titleText.text = "🏆 SCOREBOARD";
-        titleText.fontSize = 32;
-        titleText.color = Color.white;
+        titleText.text = "SCOREBOARD"; // Removido emoji para evitar problemas de fuente
+        titleText.fontSize = 24;
+        titleText.color = Color.yellow;
         titleText.alignment = TextAlignmentOptions.Center;
         RectTransform titleRect = titleGO.GetComponent<RectTransform>();
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
-        titleRect.sizeDelta = new Vector2(0, 60);
-        titleRect.offsetMin = new Vector2(20, -60);
-        titleRect.offsetMax = new Vector2(-20, 0);
+        titleRect.sizeDelta = new Vector2(0, 40);
+        titleRect.offsetMin = new Vector2(10, -40);
+        titleRect.offsetMax = new Vector2(-10, 0);
         
         // Contenedor de lista de jugadores
         GameObject containerGO = new GameObject("PlayerListContainer");
         containerGO.transform.SetParent(scoreboardPanel.transform, false);
-        RectTransform containerRect = containerGO.GetComponent<RectTransform>();
+        RectTransform containerRect = containerGO.AddComponent<RectTransform>();
         containerRect.anchorMin = new Vector2(0, 0);
         containerRect.anchorMax = new Vector2(1, 1);
-        containerRect.offsetMin = new Vector2(20, 20);
-        containerRect.offsetMax = new Vector2(-20, -80);
+        containerRect.offsetMin = new Vector2(10, 10);
+        containerRect.offsetMax = new Vector2(-10, -50);
         
         // ScrollView para la lista
         GameObject scrollView = new GameObject("ScrollView");
         scrollView.transform.SetParent(containerGO.transform, false);
         ScrollRect scrollRect = scrollView.AddComponent<ScrollRect>();
         RectTransform scrollRectTransform = scrollView.GetComponent<RectTransform>();
+        if (scrollRectTransform == null) scrollRectTransform = scrollView.AddComponent<RectTransform>();
         scrollRectTransform.anchorMin = Vector2.zero;
         scrollRectTransform.anchorMax = Vector2.one;
         scrollRectTransform.offsetMin = Vector2.zero;
@@ -146,6 +161,7 @@ public class ScoreboardUI : MonoBehaviour
         GameObject viewport = new GameObject("Viewport");
         viewport.transform.SetParent(scrollView.transform, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+        if (viewportRect == null) viewportRect = viewport.AddComponent<RectTransform>();
         viewportRect.anchorMin = Vector2.zero;
         viewportRect.anchorMax = Vector2.one;
         viewportRect.offsetMin = Vector2.zero;
@@ -156,6 +172,7 @@ public class ScoreboardUI : MonoBehaviour
         GameObject content = new GameObject("Content");
         content.transform.SetParent(viewport.transform, false);
         RectTransform contentRect = content.GetComponent<RectTransform>();
+        if (contentRect == null) contentRect = content.AddComponent<RectTransform>();
         contentRect.anchorMin = new Vector2(0, 1);
         contentRect.anchorMax = new Vector2(1, 1);
         contentRect.sizeDelta = new Vector2(0, 0);
@@ -181,24 +198,31 @@ public class ScoreboardUI : MonoBehaviour
         GameObject toggleTextGO = new GameObject("Text");
         toggleTextGO.transform.SetParent(toggleGO.transform, false);
         TextMeshProUGUI toggleText = toggleTextGO.AddComponent<TextMeshProUGUI>();
-        toggleText.text = "📊";
-        toggleText.fontSize = 24;
+        toggleText.text = "SCORE"; // Removido emoji
+        toggleText.fontSize = 12;
         toggleText.color = Color.white;
         toggleText.alignment = TextAlignmentOptions.Center;
         
         RectTransform toggleRect = toggleGO.GetComponent<RectTransform>();
+        if (toggleRect == null) toggleRect = toggleGO.AddComponent<RectTransform>();
         toggleRect.anchorMin = new Vector2(1, 1);
         toggleRect.anchorMax = new Vector2(1, 1);
-        toggleRect.sizeDelta = new Vector2(50, 50);
-        toggleRect.anchoredPosition = new Vector2(-25, -25);
+        toggleRect.sizeDelta = new Vector2(60, 30);
+        toggleRect.anchoredPosition = new Vector2(-30, -15);
         
         RectTransform toggleTextRect = toggleTextGO.GetComponent<RectTransform>();
+        if (toggleTextRect == null) toggleTextRect = toggleTextGO.AddComponent<RectTransform>();
         toggleTextRect.anchorMin = Vector2.zero;
         toggleTextRect.anchorMax = Vector2.one;
         toggleTextRect.offsetMin = Vector2.zero;
         toggleTextRect.offsetMax = Vector2.zero;
         
         Debug.Log("🏆 ScoreboardUI creado automáticamente");
+        
+        // FORZAR que esté oculto inmediatamente después de crearlo
+        scoreboardPanel.SetActive(false);
+        isVisible = false;
+        Debug.Log("🏆 Scoreboard forzado a estar oculto después de crear");
     }
     
     void CreateOnScreenScoreDisplay()
@@ -212,15 +236,24 @@ public class ScoreboardUI : MonoBehaviour
         onScreenCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         onScreenCanvas.sortingOrder = 999;
         
+        // Asegurar que esté por encima de todo
+        onScreenCanvas.overrideSorting = true;
+        onScreenCanvas.sortingOrder = 1001;
+        
         CanvasScaler onScreenScaler = onScreenScorePanel.AddComponent<CanvasScaler>();
         onScreenScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         onScreenScaler.referenceResolution = new Vector2(1920, 1080);
         
         RectTransform onScreenRect = onScreenScorePanel.GetComponent<RectTransform>();
+        if (onScreenRect == null) onScreenRect = onScreenScorePanel.AddComponent<RectTransform>();
         onScreenRect.anchorMin = new Vector2(1, 1);
         onScreenRect.anchorMax = new Vector2(1, 1);
-        onScreenRect.sizeDelta = new Vector2(200, 80);
-        onScreenRect.anchoredPosition = new Vector2(-100, -40);
+        onScreenRect.sizeDelta = new Vector2(120, 50);
+        onScreenRect.anchoredPosition = new Vector2(-60, -25);
+        
+        // FORZAR que el display en pantalla esté en la esquina superior derecha
+        onScreenRect.anchoredPosition = new Vector2(-60, -25);
+        Debug.Log("🏆 Display en pantalla posicionado en esquina superior derecha");
         
         // Fondo del panel
         GameObject onScreenBg = new GameObject("Background");
@@ -228,6 +261,7 @@ public class ScoreboardUI : MonoBehaviour
         Image onScreenBgImage = onScreenBg.AddComponent<Image>();
         onScreenBgImage.color = new Color(0, 0, 0, 0.7f);
         RectTransform onScreenBgRect = onScreenBg.GetComponent<RectTransform>();
+        if (onScreenBgRect == null) onScreenBgRect = onScreenBg.AddComponent<RectTransform>();
         onScreenBgRect.anchorMin = Vector2.zero;
         onScreenBgRect.anchorMax = Vector2.one;
         onScreenBgRect.offsetMin = Vector2.zero;
@@ -238,30 +272,33 @@ public class ScoreboardUI : MonoBehaviour
         scoreTextGO.transform.SetParent(onScreenScorePanel.transform, false);
         onScreenScoreText = scoreTextGO.AddComponent<TextMeshProUGUI>();
         onScreenScoreText.text = "Score: 0";
-        onScreenScoreText.fontSize = 18;
+        onScreenScoreText.fontSize = 14;
         onScreenScoreText.color = Color.yellow;
         onScreenScoreText.alignment = TextAlignmentOptions.Center;
         RectTransform scoreTextRect = scoreTextGO.GetComponent<RectTransform>();
+        if (scoreTextRect == null) scoreTextRect = scoreTextGO.AddComponent<RectTransform>();
         scoreTextRect.anchorMin = new Vector2(0, 0.5f);
         scoreTextRect.anchorMax = new Vector2(1, 1);
-        scoreTextRect.offsetMin = new Vector2(10, 5);
-        scoreTextRect.offsetMax = new Vector2(-10, -5);
+        scoreTextRect.offsetMin = new Vector2(5, 2);
+        scoreTextRect.offsetMax = new Vector2(-5, -2);
         
         // Texto de kills
         GameObject killsTextGO = new GameObject("KillsText");
         killsTextGO.transform.SetParent(onScreenScorePanel.transform, false);
         onScreenKillsText = killsTextGO.AddComponent<TextMeshProUGUI>();
         onScreenKillsText.text = "Kills: 0";
-        onScreenKillsText.fontSize = 16;
+        onScreenKillsText.fontSize = 12;
         onScreenKillsText.color = Color.red;
         onScreenKillsText.alignment = TextAlignmentOptions.Center;
         RectTransform killsTextRect = killsTextGO.GetComponent<RectTransform>();
+        if (killsTextRect == null) killsTextRect = killsTextGO.AddComponent<RectTransform>();
         killsTextRect.anchorMin = new Vector2(0, 0);
         killsTextRect.anchorMax = new Vector2(1, 0.5f);
-        killsTextRect.offsetMin = new Vector2(10, 5);
-        killsTextRect.offsetMax = new Vector2(-10, -5);
+        killsTextRect.offsetMin = new Vector2(5, 2);
+        killsTextRect.offsetMax = new Vector2(-5, -2);
         
         Debug.Log("🏆 On-Screen Score Display creado automáticamente");
+        Debug.Log($"🏆 Posición del display: {onScreenRect.anchoredPosition}, Tamaño: {onScreenRect.sizeDelta}");
     }
     
     void CreatePlayerEntryPrefab()
@@ -274,6 +311,7 @@ public class ScoreboardUI : MonoBehaviour
         Image bgImage = bg.AddComponent<Image>();
         bgImage.color = new Color(0.1f, 0.1f, 0.1f, 0.8f);
         RectTransform bgRect = bg.GetComponent<RectTransform>();
+        if (bgRect == null) bgRect = bg.AddComponent<RectTransform>();
         bgRect.anchorMin = Vector2.zero;
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
@@ -288,6 +326,7 @@ public class ScoreboardUI : MonoBehaviour
         nameText.color = Color.white;
         nameText.alignment = TextAlignmentOptions.Left;
         RectTransform nameRect = nameGO.GetComponent<RectTransform>();
+        if (nameRect == null) nameRect = nameGO.AddComponent<RectTransform>();
         nameRect.anchorMin = new Vector2(0, 0);
         nameRect.anchorMax = new Vector2(0.4f, 1);
         nameRect.offsetMin = new Vector2(10, 5);
@@ -302,6 +341,7 @@ public class ScoreboardUI : MonoBehaviour
         killsText.color = Color.red;
         killsText.alignment = TextAlignmentOptions.Center;
         RectTransform killsRect = killsGO.GetComponent<RectTransform>();
+        if (killsRect == null) killsRect = killsGO.AddComponent<RectTransform>();
         killsRect.anchorMin = new Vector2(0.4f, 0);
         killsRect.anchorMax = new Vector2(0.6f, 1);
         killsRect.offsetMin = Vector2.zero;
@@ -316,6 +356,7 @@ public class ScoreboardUI : MonoBehaviour
         deathsText.color = Color.gray;
         deathsText.alignment = TextAlignmentOptions.Center;
         RectTransform deathsRect = deathsGO.GetComponent<RectTransform>();
+        if (deathsRect == null) deathsRect = deathsGO.AddComponent<RectTransform>();
         deathsRect.anchorMin = new Vector2(0.6f, 0);
         deathsRect.anchorMax = new Vector2(0.8f, 1);
         deathsRect.offsetMin = Vector2.zero;
@@ -330,6 +371,7 @@ public class ScoreboardUI : MonoBehaviour
         scoreText.color = Color.yellow;
         scoreText.alignment = TextAlignmentOptions.Center;
         RectTransform scoreRect = scoreGO.GetComponent<RectTransform>();
+        if (scoreRect == null) scoreRect = scoreGO.AddComponent<RectTransform>();
         scoreRect.anchorMin = new Vector2(0.8f, 0);
         scoreRect.anchorMax = new Vector2(1, 1);
         scoreRect.offsetMin = new Vector2(5, 5);
@@ -337,7 +379,8 @@ public class ScoreboardUI : MonoBehaviour
         
         // Configurar tamaño del prefab
         RectTransform prefabRect = playerEntryPrefab.GetComponent<RectTransform>();
-        prefabRect.sizeDelta = new Vector2(0, 40);
+        if (prefabRect == null) prefabRect = playerEntryPrefab.AddComponent<RectTransform>();
+        prefabRect.sizeDelta = new Vector2(0, 35);
         
         // Ocultar el prefab
         playerEntryPrefab.SetActive(false);
@@ -383,6 +426,7 @@ public class ScoreboardUI : MonoBehaviour
         {
             isVisible = !isVisible;
             scoreboardPanel.SetActive(isVisible);
+            Debug.Log($"🏆 Scoreboard toggle: {isVisible}");
             
             if (isVisible)
             {
@@ -417,8 +461,8 @@ public class ScoreboardUI : MonoBehaviour
             playerStats.Add((player, score, kills, deaths));
         }
         
-        // Ordenar por score descendente
-        playerStats = playerStats.OrderByDescending(p => p.score).ToList();
+        // Ordenar por kills descendente (más kills = mejor posición)
+        playerStats = playerStats.OrderByDescending(p => p.kills).ToList();
         
         // Crear entradas para cada jugador
         for (int i = 0; i < playerStats.Count; i++)
@@ -431,7 +475,7 @@ public class ScoreboardUI : MonoBehaviour
         if (playerListContainer != null)
         {
             RectTransform contentRect = playerListContainer.GetComponent<RectTransform>();
-            contentRect.sizeDelta = new Vector2(0, playerStats.Count * 45);
+            contentRect.sizeDelta = new Vector2(0, playerStats.Count * 37);
         }
     }
     
@@ -445,7 +489,7 @@ public class ScoreboardUI : MonoBehaviour
         
         // Configurar posición
         RectTransform entryRect = entry.GetComponent<RectTransform>();
-        entryRect.anchoredPosition = new Vector2(0, -position * 45);
+        entryRect.anchoredPosition = new Vector2(0, -position * 37);
         
         // Configurar colores según posición
         Color positionColor = GetPositionColor(position);
@@ -477,7 +521,8 @@ public class ScoreboardUI : MonoBehaviour
         }
     }
     
-    // Método estático para crear ScoreboardUI fácilmente
+    // Método estático para crear ScoreboardUI fácilmente (comentado para evitar problemas)
+    /*
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void CreateScoreboardUIInstance()
     {
@@ -489,4 +534,5 @@ public class ScoreboardUI : MonoBehaviour
             Debug.Log("🏆 ScoreboardUI creado automáticamente en la escena");
         }
     }
+    */
 }

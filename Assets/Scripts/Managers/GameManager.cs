@@ -35,6 +35,9 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        // Limpiar Background problemático primero
+        CleanupProblematicBackground();
+        
         SetupUI();
         
         // Verificar si existe HealthBarManager
@@ -66,6 +69,17 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.Log("🏆 ScoreManager found!");
+        }
+        
+        // Crear SimpleScoreboard en lugar del ScoreboardUI problemático
+        if (FindFirstObjectByType<SimpleScoreboard>() == null)
+        {
+            Debug.Log("🏆 SimpleScoreboard not found. Creating one automatically...");
+            CreateSimpleScoreboard();
+        }
+        else
+        {
+            Debug.Log("🏆 SimpleScoreboard found!");
         }
         
         // Health bar superior removida - ahora usamos las pequeñas sobre cada spinner
@@ -106,6 +120,13 @@ public class GameManager : MonoBehaviour
         // PhotonNetwork asignará automáticamente un ViewID válido
         Debug.Log("🏆 ScoreManager created automatically");
     }
+    
+    void CreateSimpleScoreboard()
+    {
+        GameObject simpleScoreboardObj = new GameObject("SimpleScoreboard");
+        var simpleScoreboard = simpleScoreboardObj.AddComponent<SimpleScoreboard>();
+        Debug.Log("🏆 SimpleScoreboard created automatically");
+    }
 
     void SetupUI()
     {
@@ -143,5 +164,95 @@ public class GameManager : MonoBehaviour
     public void OnLocalPlayerDied()
     {
         // Health UI inicial removido - ahora usamos health bars individuales
+    }
+    
+    void CleanupProblematicBackground()
+    {
+        Debug.Log("🧹 Iniciando limpieza de UI problemática...");
+        
+        // ELIMINAR TODOS los elementos UI problemáticos usando FindObjectsByType (más rápido)
+        Canvas[] allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        Debug.Log($"🔍 Encontrados {allCanvases.Length} canvas en la escena");
+        
+        foreach (Canvas canvas in allCanvases)
+        {
+            Debug.Log($"🔍 Revisando canvas: {canvas.name}");
+            
+            // Buscar MainMenuUI en este canvas
+            Transform mainMenuUI = canvas.transform.Find("MainMenuUI");
+            if (mainMenuUI != null)
+            {
+                Debug.Log($"🗑️ ELIMINANDO MainMenuUI del canvas {canvas.name}");
+                DestroyImmediate(mainMenuUI.gameObject);
+                Debug.Log($"✅ MainMenuUI eliminado del canvas {canvas.name}");
+            }
+            else
+            {
+                Debug.Log($"✅ No se encontró MainMenuUI en canvas {canvas.name}");
+            }
+            
+            // Buscar HealthSlider en este canvas
+            Transform healthSlider = canvas.transform.Find("HealthSlider");
+            if (healthSlider != null)
+            {
+                Debug.Log($"🗑️ ELIMINANDO HealthSlider del canvas {canvas.name}");
+                DestroyImmediate(healthSlider.gameObject);
+                Debug.Log($"✅ HealthSlider eliminado del canvas {canvas.name}");
+            }
+            else
+            {
+                Debug.Log($"✅ No se encontró HealthSlider en canvas {canvas.name}");
+            }
+            
+            // Buscar cualquier Background problemático
+            Transform[] allChildren = canvas.GetComponentsInChildren<Transform>();
+            Debug.Log($"🔍 Canvas {canvas.name} tiene {allChildren.Length} hijos");
+            
+            foreach (Transform child in allChildren)
+            {
+                if (child.name == "Background")
+                {
+                    Debug.Log($"🔍 Encontrado Background: {child.name} en {child.parent?.name}");
+                    RectTransform rect = child.GetComponent<RectTransform>();
+                    if (rect != null)
+                    {
+                        Debug.Log($"🔍 Background anchors: Min({rect.anchorMin.x}, {rect.anchorMin.y}), Max({rect.anchorMax.x}, {rect.anchorMax.y})");
+                        
+                        // Si ocupa toda la pantalla o tiene anchors problemáticos
+                        if ((Mathf.Approximately(rect.anchorMin.x, 0f) && Mathf.Approximately(rect.anchorMax.x, 1f) &&
+                             Mathf.Approximately(rect.anchorMin.y, 0f) && Mathf.Approximately(rect.anchorMax.y, 1f)) ||
+                            (Mathf.Approximately(rect.anchorMin.y, 0.25f) && Mathf.Approximately(rect.anchorMax.y, 0.75f)))
+                        {
+                            Debug.Log($"🗑️ ELIMINANDO Background problemático: {child.name} en {child.parent?.name}");
+                            DestroyImmediate(child.gameObject);
+                            Debug.Log($"✅ Background problemático eliminado");
+                        }
+                        else
+                        {
+                            Debug.Log($"✅ Background no es problemático, manteniendo");
+                        }
+                    }
+                }
+            }
+        }
+        
+        // VERIFICACIÓN FINAL - buscar por nombre global
+        GameObject mainMenuUIGlobal = GameObject.Find("MainMenuUI");
+        if (mainMenuUIGlobal != null)
+        {
+            Debug.Log($"🚨 ALERTA: MainMenuUI sigue existiendo globalmente!");
+            DestroyImmediate(mainMenuUIGlobal);
+            Debug.Log($"✅ MainMenuUI eliminado globalmente");
+        }
+        
+        GameObject healthSliderGlobal = GameObject.Find("HealthSlider");
+        if (healthSliderGlobal != null)
+        {
+            Debug.Log($"🚨 ALERTA: HealthSlider sigue existiendo globalmente!");
+            DestroyImmediate(healthSliderGlobal);
+            Debug.Log($"✅ HealthSlider eliminado globalmente");
+        }
+        
+        Debug.Log("✅ Limpieza de UI completada");
     }
 } 

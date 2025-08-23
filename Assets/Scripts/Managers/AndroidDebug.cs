@@ -9,11 +9,11 @@ public class AndroidDebug : MonoBehaviour
     [SerializeField] private TextMeshProUGUI debugText;
     
     [Header("Debug Settings")]
-    public bool showDebugInfo = false;
-    public bool showFPS = true;
-    public bool showInputInfo = true;
-    public bool showNetworkInfo = true;
-    public bool showPhotonViews = true;
+    public bool showDebugInfo = false; // Desactivado por defecto para no interferir con el scoreboard
+    public bool showFPS = false; // Desactivado por defecto
+    public bool showInputInfo = false; // Desactivado por defecto
+    public bool showNetworkInfo = false; // Desactivado por defecto
+    public bool showPhotonViews = false; // Desactivado por defecto
     public bool hideLeftHud = true; // oculta HUD duplicado si existe
     
     private int frameCount = 0;
@@ -30,13 +30,16 @@ public class AndroidDebug : MonoBehaviour
             var leftHud = GameObject.Find("HUD_Left");
             if (leftHud != null) leftHud.SetActive(false);
         }
+        // Solo crear debug en Android y solo si está explícitamente activado
         if (Application.platform != RuntimePlatform.Android || !showDebugInfo)
         {
             if (overlayPanel != null)
                 overlayPanel.SetActive(false);
             return;
         }
-        if (debugText == null)
+        
+        // Verificación adicional: solo crear si realmente se necesita
+        if (debugText == null && showDebugInfo)
         {
             CreateDebugUI();
         }
@@ -57,10 +60,10 @@ public class AndroidDebug : MonoBehaviour
         }
         panel.transform.SetParent(canvas.transform, false);
         Image panelImage = panel.AddComponent<Image>();
-        panelImage.color = new Color(0, 0, 0, 0.6f);
+        panelImage.color = new Color(0, 0, 0, 0.4f);
         panelImage.raycastTarget = false;
         RectTransform panelRect = panel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.55f, 0.55f);
+        panelRect.anchorMin = new Vector2(0.7f, 0.7f);
         panelRect.anchorMax = new Vector2(1f, 1f);
         panelRect.offsetMin = Vector2.zero;
         panelRect.offsetMax = Vector2.zero;
