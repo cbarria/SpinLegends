@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI; // Para CanvasScaler
 using System.Collections.Generic;
 using Photon.Pun;
 using System.Linq; // Added for FirstOrDefault
