@@ -56,7 +56,18 @@ public class GameManager : MonoBehaviour
             CreateNetworkManager();
         }
         
-        // ScoreManager opcional - no crear automáticamente para evitar problemas
+        // Crear ScoreManager si no existe
+        var scoreManager = FindFirstObjectByType<ScoreManager>();
+        if (scoreManager == null)
+        {
+            Debug.LogWarning("🏆 ScoreManager not found. Creating one automatically...");
+            CreateScoreManager();
+        }
+        else
+        {
+            Debug.Log("🏆 ScoreManager found!");
+        }
+        
         // Health bar superior removida - ahora usamos las pequeñas sobre cada spinner
         if (healthBar != null)
         {

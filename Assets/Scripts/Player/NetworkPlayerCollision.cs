@@ -5,7 +5,7 @@ using Photon.Pun;
 public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
 {
     [Header("Collision Settings")]
-    public float collisionDamageMultiplier = 0.3f; // Daño balanceado
+    public float collisionDamageMultiplier = 0.15f; // Daño reducido para que duren más
     public float knockbackForce = 15f; // Knockback reducido - antes era demasiado fuerte
     public float minCollisionForce = 0.5f; // Detecta hasta las colisiones más sutiles
     public LayerMask playerLayer = 1;
