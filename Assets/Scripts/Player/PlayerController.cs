@@ -362,7 +362,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             Die();
         }
         if (GameManager.Instance != null)
-            GameManager.Instance.UpdateHealthUI(currentHealth, maxHealth);
+            // Health UI ahora se maneja automáticamente por HealthBarManager
         if (photonView.IsMine)
         {
             if (CameraShake.Instance != null)

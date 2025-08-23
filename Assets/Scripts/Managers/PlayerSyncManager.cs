@@ -461,7 +461,7 @@ public class PlayerSyncManager : MonoBehaviourPunCallbacks
         // Notificar al GameManager si es necesario
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.UpdateHealthUI(info.health, player.MaxHealth);
+            // Health UI ahora se maneja automáticamente por HealthBarManager
         }
     }
     

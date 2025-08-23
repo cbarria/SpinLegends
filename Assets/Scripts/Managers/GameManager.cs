@@ -57,15 +57,11 @@ public class GameManager : MonoBehaviour
         }
         
         // ScoreManager opcional - no crear automáticamente para evitar problemas
-        // Configura slider si existe
+        // Health bar superior removida - ahora usamos las pequeñas sobre cada spinner
         if (healthBar != null)
         {
-            healthBar.minValue = 0f;
-            healthBar.maxValue = 1f;
-            healthBar.wholeNumbers = false;
-            healthBar.value = 1f; // Empezar con salud completa
+            healthBar.gameObject.SetActive(false); // Ocultar la barra superior
         }
-        UpdateHealthUI(100, 100); // Mostrar salud completa por defecto
     }
     
     void CreateNetworkManager()
@@ -112,15 +108,10 @@ public class GameManager : MonoBehaviour
     {
         localPlayer = player;
         Debug.Log("Jugador local configurado: " + player.name);
-        UpdateHealthUI(localPlayer.CurrentHealth, localPlayer.MaxHealth);
+        // Health UI ahora se maneja por las health bars individuales sobre cada spinner
     }
 
-    public void UpdateHealthUI(float currentHealth, float maxHealth)
-    {
-        if (healthBar == null) return;
-        float v = maxHealth > 0 ? currentHealth / maxHealth : 0f;
-        healthBar.value = Mathf.Clamp01(v);
-    }
+    // UpdateHealthUI removido - ahora usamos health bars individuales
 
     public void OnSpinButtonPressed()
     {
@@ -140,6 +131,6 @@ public class GameManager : MonoBehaviour
 
     public void OnLocalPlayerDied()
     {
-        UpdateHealthUI(0, 1);
+        // Health UI inicial removido - ahora usamos health bars individuales
     }
 } 
