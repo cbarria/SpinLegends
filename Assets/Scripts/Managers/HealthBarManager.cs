@@ -230,14 +230,16 @@ public class HealthBarManager : MonoBehaviour
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
         
-        // Crear Health Fill (verde)
+        // Crear Health Fill (verde BRILLANTE)
         GameObject fillGO = new GameObject("HealthFill");
         fillGO.transform.SetParent(bgGO.transform, false);
         Image fillImage = fillGO.AddComponent<Image>();
-        fillImage.color = Color.green;
+        fillImage.color = new Color(0f, 1f, 0f, 1f); // Verde brillante completamente opaco
         fillImage.type = Image.Type.Filled;
         fillImage.fillMethod = Image.FillMethod.Horizontal;
         fillImage.fillAmount = 1f;
+        
+        Debug.Log($"🏥🎨 Created fill: Color={fillImage.color}, Amount={fillImage.fillAmount}, Type={fillImage.type}");
         
         RectTransform fillRect = fillGO.GetComponent<RectTransform>();
         fillRect.anchorMin = Vector2.zero;

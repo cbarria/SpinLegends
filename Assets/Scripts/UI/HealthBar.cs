@@ -161,7 +161,15 @@ public class HealthBar : MonoBehaviour
         {
             healthBarFill.type = Image.Type.Filled;
             healthBarFill.fillMethod = Image.FillMethod.Horizontal;
-            Debug.Log($"🏥🔧 Fill configured: Type={healthBarFill.type}, Method={healthBarFill.fillMethod}, Amount={healthBarFill.fillAmount}");
+            healthBarFill.color = Color.green; // FORZAR COLOR VERDE
+            Debug.Log($"🏥🔧 Fill configured: Type={healthBarFill.type}, Method={healthBarFill.fillMethod}, Amount={healthBarFill.fillAmount}, Color={healthBarFill.color}");
+        }
+        
+        // Debug de la jerarquía
+        if (healthBarBackground != null && healthBarFill != null)
+        {
+            Debug.Log($"🏥🏗️ Hierarchy: Background={healthBarBackground.transform.GetSiblingIndex()}, Fill={healthBarFill.transform.GetSiblingIndex()}");
+            Debug.Log($"🏥🎨 Colors: Background={healthBarBackground.color}, Fill={healthBarFill.color}");
         }
     }
     
@@ -263,6 +271,13 @@ public class HealthBar : MonoBehaviour
             Debug.Log($"🏥🔄 Fill amount changed: {oldFillAmount:F2} → {healthPercentage:F2} (Health: {currentHealth:F0}/{maxHealth:F0})");
         }
         
+        // EMERGENCIA: Forzar color verde si está al 100%
+        if (healthPercentage >= 0.99f && healthBarFill.color != Color.green)
+        {
+            Debug.Log($"🏥🚨 EMERGENCY: Forcing green color! Current color was: {healthBarFill.color}");
+            healthBarFill.color = Color.green;
+        }
+        
         // Actualizar color basado en la salud
         UpdateHealthColor(healthPercentage);
         
@@ -299,8 +314,17 @@ public class HealthBar : MonoBehaviour
             targetColor = lowHealthColor;
         }
         
+        // Debug del color
+        Color oldColor = healthBarFill.color;
+        
         // Aplicar color con transición suave
         healthBarFill.color = Color.Lerp(healthBarFill.color, targetColor, Time.deltaTime * 5f);
+        
+        // Debug si cambió el color significativamente
+        if (Vector4.Distance(oldColor, healthBarFill.color) > 0.1f)
+        {
+            Debug.Log($"🏥🎨 Color changed: {oldColor} → {healthBarFill.color} (Target: {targetColor}, Health: {healthPercentage:P0})");
+        }
     }
     
     void AnimatePulse()
