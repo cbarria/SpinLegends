@@ -154,33 +154,11 @@ public class HealthBarManager : MonoBehaviour
             return;
         }
         
-        // Crear GameObject para la health bar con Canvas World Space
-        GameObject healthBarGO = new GameObject($"HealthBar_{player.name}");
-        
-        // Agregar Canvas World Space
-        Canvas canvas = healthBarGO.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        canvas.worldCamera = mainCamera;
-        canvas.sortingOrder = 100; // Asegurar que aparezca encima
-        
-        // Agregar CanvasScaler para mejor escalado
-        CanvasScaler scaler = healthBarGO.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        
-        // Configurar posición y escala del Canvas
-        RectTransform canvasRect = healthBarGO.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(200f, 40f); // Tamaño en píxeles
-        canvasRect.localScale = Vector3.one * 0.005f; // Escala más pequeña para world space
-        
-        // Posicionar sobre el jugador
-        Vector3 worldPos = player.transform.position + healthBarOffset;
-        healthBarGO.transform.position = worldPos;
+        // 🏥 CREAR HEALTH BAR COMPLETA DESDE CÓDIGO
+        GameObject healthBarGO = CreateHealthBarUI(player);
         
         // Agregar componente HealthBar
         HealthBar healthBar = healthBarGO.AddComponent<HealthBar>();
-        
-        // Agregar efectos a la health bar
-        HealthBarEffects healthBarEffects = healthBarGO.AddComponent<HealthBarEffects>();
         
         // Configurar la health bar
         healthBar.targetPlayer = player;
@@ -215,24 +193,53 @@ public class HealthBarManager : MonoBehaviour
         playerHealthBars[playerId] = healthBar;
         
         Debug.Log($"🏥✅ Health bar created successfully for {player.name} (Local: {isLocalPlayer}) at position {healthBarGO.transform.position}");
-
-        // Find the main World Space Canvas
-        Canvas worldCanvas = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None)
-            .FirstOrDefault(c => c.renderMode == RenderMode.WorldSpace);
-        if (worldCanvas != null)
-        {
-            healthBarGO.transform.SetParent(worldCanvas.transform, false);
-        }
-        else
-        {
-            // fallback: attach under main Canvas but keep it separate
-            Canvas mainCanvas = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None)
-                .FirstOrDefault(c => c.renderMode == RenderMode.ScreenSpaceOverlay);
-            if (mainCanvas != null)
-            {
-                healthBarGO.transform.SetParent(mainCanvas.transform, false);
-            }
-        }
+    }
+    
+    GameObject CreateHealthBarUI(PlayerController player)
+    {
+        // Crear Canvas World Space
+        GameObject canvasGO = new GameObject($"HealthBar_{player.name}");
+        Canvas canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = mainCamera;
+        canvas.sortingOrder = 100;
+        
+        // Configurar Canvas
+        RectTransform canvasRect = canvasGO.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(100f, 20f);
+        canvasRect.localScale = Vector3.one * 0.01f;
+        
+        // Posicionar sobre el jugador
+        canvasGO.transform.position = player.transform.position + healthBarOffset;
+        
+        // Crear Background (negro)
+        GameObject bgGO = new GameObject("Background");
+        bgGO.transform.SetParent(canvasGO.transform, false);
+        Image bgImage = bgGO.AddComponent<Image>();
+        bgImage.color = new Color(0, 0, 0, 0.8f);
+        
+        RectTransform bgRect = bgGO.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        
+        // Crear Health Fill (verde)
+        GameObject fillGO = new GameObject("HealthFill");
+        fillGO.transform.SetParent(bgGO.transform, false);
+        Image fillImage = fillGO.AddComponent<Image>();
+        fillImage.color = Color.green;
+        fillImage.type = Image.Type.Filled;
+        fillImage.fillMethod = Image.FillMethod.Horizontal;
+        fillImage.fillAmount = 1f;
+        
+        RectTransform fillRect = fillGO.GetComponent<RectTransform>();
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = new Vector2(2, 2);
+        fillRect.offsetMax = new Vector2(-2, -2);
+        
+        return canvasGO;
     }
     
     void CleanupDeadPlayers()
