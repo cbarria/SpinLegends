@@ -416,7 +416,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             Debug.Log($"📡 RESPAWN: Cliente {photonView.OwnerActorNr} solicitando respawn al Master via Event");
             var content = new object[] { photonView.OwnerActorNr, 1f };
             var options = new Photon.Realtime.RaiseEventOptions { Receivers = Photon.Realtime.ReceiverGroup.MasterClient };
-            PhotonNetwork.RaiseEvent(102, content, options, Photon.Realtime.SendOptions.SendReliable);
+            PhotonNetwork.RaiseEvent(102, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
         }

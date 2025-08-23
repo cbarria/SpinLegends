@@ -199,7 +199,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
             Debug.LogWarning("⚠️ PhotonView aún sin ViewID, usando RaiseEvent fallback para solicitar spawn.");
             var content = new object[] { actor };
             var options = new Photon.Realtime.RaiseEventOptions { Receivers = Photon.Realtime.ReceiverGroup.MasterClient };
-            PhotonNetwork.RaiseEvent(SpawnRequestEventCode, content, options, Photon.Realtime.SendOptions.SendReliable);
+            PhotonNetwork.RaiseEvent(SpawnRequestEventCode, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
         }
     }
 
