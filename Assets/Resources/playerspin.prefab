@@ -222,6 +222,7 @@ MonoBehaviour:
   jumpForce: 10
   maxHealth: 100
   fallDeathHeight: -5
+  arenaRadius: 50
   spawnImmunityDuration: 2
   interpolationSpeed: 20
   rotationInterpolationSpeed: 15

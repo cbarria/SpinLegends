@@ -6,7 +6,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
 {
     [Header("Collision Settings")]
     public float collisionDamageMultiplier = 2f; // ¡DAÑO EXPLOSIVO!
-    public float knockbackForce = 50f; // ¡KNOCKBACK SÚPER FUERTE para choques dramáticos!
+    public float knockbackForce = 15f; // Knockback reducido - antes era demasiado fuerte
     public float minCollisionForce = 0.5f; // Detecta hasta las colisiones más sutiles
     public LayerMask playerLayer = 1;
     
@@ -116,7 +116,7 @@ public class NetworkPlayerCollision : MonoBehaviourPun, IPunObservable
         Vector3 knockbackDirection = (transform.position - contactPoint).normalized;
         Vector3 otherKnockbackDirection = -knockbackDirection;
         float actualKnockbackForce = Mathf.Max(knockbackForce * 0.8f, knockbackForce * collisionForce);
-        actualKnockbackForce = Mathf.Clamp(actualKnockbackForce, knockbackForce * 0.8f, knockbackForce * 4f); // ¡HASTA 4X KNOCKBACK!
+        actualKnockbackForce = Mathf.Clamp(actualKnockbackForce, knockbackForce * 0.5f, knockbackForce * 2f); // Máximo 2X knockback
         // Aplicar daño al otro jugador
         otherPlayer.photonView.RPC("SetLastHitByRPC", RpcTarget.All, photonView.OwnerActorNr);
         otherPlayer.photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);

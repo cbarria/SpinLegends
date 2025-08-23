@@ -11,7 +11,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     public float maxHealth = 100f;
     
     [Header("Fall Detection")]
-    public float fallDeathHeight = -5f; // Altura mínima antes de morir por caída
+    public float fallDeathHeight = -2f; // Altura mínima antes de morir por caída (menos profundo)
     public float arenaRadius = 50f; // Radio de la arena - morir si sales de aquí
     
     [Header("Spawn Protection")]
@@ -20,10 +20,10 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     private bool isImmune = false;
     
     [Header("Network Settings")]
-    public float interpolationSpeed = 200f; // SÚPER RÁPIDO para velocidades extremas
-    public float rotationInterpolationSpeed = 60f; // Aumentado aún más para mejor responsividad
+    public float interpolationSpeed = 300f; // SÚPER RÁPIDO para velocidades extremas
+    public float rotationInterpolationSpeed = 100f; // Aumentado para mejor responsividad
     public float velocityInterpolationSpeed = 45f; // Aumentado aún más para mejor responsividad
-    public float spinInterpolationSpeed = 80f; // Aumentado significativamente para animación más fluida
+    public float spinInterpolationSpeed = 120f; // Aumentado para animación más fluida
     
     [Header("Components")]
     private Rigidbody rb;
@@ -158,6 +158,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Detección de caída por altura
         if (transform.position.y < fallDeathHeight)
         {
+            Debug.Log($"🕳️💀 CAÍDA DETECTADA: Player {photonView.OwnerActorNr} cayó a Y={transform.position.y:F1} (límite: {fallDeathHeight})");
             // Muerte por caída - forzar respawn inmediato
             currentHealth = 0f;
             Die();
@@ -381,6 +382,8 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
 
     void Die()
     {
+        Debug.Log($"💀 DIE: Player {photonView.OwnerActorNr} murió - IsMine: {photonView.IsMine}, Inmune: {isImmune}");
+        
         // Liberar spawn point
         var spawnMgr = FindFirstObjectByType<PlayerSpawnManager>();
         if (spawnMgr != null)
