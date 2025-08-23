@@ -13,6 +13,11 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     [Header("Fall Detection")]
     public float fallDeathHeight = -5f; // Altura mínima antes de morir por caída
     
+    [Header("Spawn Protection")]
+    public float spawnImmunityDuration = 2f; // Inmunidad después del spawn
+    private float spawnTime = 0f;
+    private bool isImmune = false;
+    
     [Header("Network Settings")]
     public float interpolationSpeed = 50f; // Aumentado aún más para mejor responsividad
     public float rotationInterpolationSpeed = 60f; // Aumentado aún más para mejor responsividad
@@ -43,6 +48,18 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     {
         currentHealth = maxHealth;
         networkHealth = maxHealth;
+        
+        // Activar inmunidad de spawn
+        spawnTime = Time.time;
+        isImmune = true;
+        StartCoroutine(RemoveSpawnImmunity());
+        
+        // Visual feedback de inmunidad (solo para jugador local)
+        if (photonView.IsMine)
+        {
+            Debug.Log($"🛡️ INMUNIDAD ACTIVADA: Player {photonView.OwnerActorNr} inmune por {spawnImmunityDuration}s");
+        }
+        
         rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -310,6 +327,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     public void TakeDamage(float damage)
     {
+        // 🛡️ INMUNIDAD DE SPAWN - No recibir daño durante los primeros segundos
+        if (isImmune)
+        {
+            Debug.Log($"🛡️ INMUNIDAD: Player {photonView.OwnerActorNr} es inmune al daño ({damage}) - {Time.time - spawnTime:F1}s desde spawn");
+            return;
+        }
+        
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
         if (currentHealth <= 0)
@@ -386,6 +410,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         if (this != null && gameObject != null)
         {
             PhotonNetwork.Destroy(gameObject);
+        }
+    }
+    
+    System.Collections.IEnumerator RemoveSpawnImmunity()
+    {
+        yield return new WaitForSeconds(spawnImmunityDuration);
+        isImmune = false;
+        if (photonView.IsMine)
+        {
+            Debug.Log($"🛡️➡️⚔️ INMUNIDAD TERMINADA: Player {photonView.OwnerActorNr} ya puede recibir daño");
         }
     }
 
