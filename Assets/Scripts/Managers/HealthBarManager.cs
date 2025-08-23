@@ -61,6 +61,18 @@ public class HealthBarManager : MonoBehaviour
     {
         Debug.Log("🏥 Setting up Health Bars...");
         
+        // Contar players disponibles
+        PlayerController[] allPlayers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        Debug.Log($"🏥🔍 Found {allPlayers.Length} players in scene");
+        
+        foreach (var p in allPlayers)
+        {
+            if (p != null && p.photonView != null)
+            {
+                Debug.Log($"🏥👤 Player: {p.name} - ViewID: {p.photonView.ViewID} - IsMine: {p.photonView.IsMine}");
+            }
+        }
+        
         // Crear health bar para el jugador local
         if (showHealthBarForLocalPlayer)
         {
@@ -148,11 +160,20 @@ public class HealthBarManager : MonoBehaviour
         Canvas canvas = healthBarGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.worldCamera = mainCamera;
+        canvas.sortingOrder = 100; // Asegurar que aparezca encima
         
-        // Configurar escala del Canvas
+        // Agregar CanvasScaler para mejor escalado
+        CanvasScaler scaler = healthBarGO.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        
+        // Configurar posición y escala del Canvas
         RectTransform canvasRect = healthBarGO.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(2f, 0.5f); // Tamaño de health bar
-        canvasRect.localScale = Vector3.one * 0.01f; // Escala pequeña para world space
+        canvasRect.sizeDelta = new Vector2(200f, 40f); // Tamaño en píxeles
+        canvasRect.localScale = Vector3.one * 0.005f; // Escala más pequeña para world space
+        
+        // Posicionar sobre el jugador
+        Vector3 worldPos = player.transform.position + healthBarOffset;
+        healthBarGO.transform.position = worldPos;
         
         // Agregar componente HealthBar
         HealthBar healthBar = healthBarGO.AddComponent<HealthBar>();
@@ -192,7 +213,7 @@ public class HealthBarManager : MonoBehaviour
         // Agregar a la lista de health bars
         playerHealthBars[playerId] = healthBar;
         
-        Debug.Log($"Health bar created successfully for {player.name} (Local: {isLocalPlayer})");
+        Debug.Log($"🏥✅ Health bar created successfully for {player.name} (Local: {isLocalPlayer}) at position {healthBarGO.transform.position}");
 
         // Find the main World Space Canvas
         Canvas worldCanvas = GameObject.FindObjectsByType<Canvas>(FindObjectsSortMode.None)

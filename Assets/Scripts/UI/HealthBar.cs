@@ -77,7 +77,7 @@ public class HealthBar : MonoBehaviour
             UpdateHealthBar();
             
             isInitialized = true;
-            Debug.Log($"HealthBar initialized for {targetPlayer.name}");
+            Debug.Log($"🏥🔧 HealthBar initialized for {targetPlayer.name} - Canvas: {healthCanvas != null} - Fill: {healthBarFill != null} - Position: {transform.position}");
         }
         else
         {

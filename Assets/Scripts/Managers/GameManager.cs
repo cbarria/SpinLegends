@@ -63,9 +63,9 @@ public class GameManager : MonoBehaviour
             healthBar.minValue = 0f;
             healthBar.maxValue = 1f;
             healthBar.wholeNumbers = false;
-            healthBar.value = 0f; // hasta tener jugador local
+            healthBar.value = 1f; // Empezar con salud completa
         }
-        UpdateHealthUI(0, 1);
+        UpdateHealthUI(100, 100); // Mostrar salud completa por defecto
     }
     
     void CreateNetworkManager()
