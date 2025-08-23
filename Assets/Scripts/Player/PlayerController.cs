@@ -12,6 +12,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     [Header("Fall Detection")]
     public float fallDeathHeight = -5f; // Altura mínima antes de morir por caída
+    public float arenaRadius = 50f; // Radio de la arena - morir si sales de aquí
     
     [Header("Spawn Protection")]
     public float spawnImmunityDuration = 2f; // Inmunidad después del spawn
@@ -19,7 +20,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     private bool isImmune = false;
     
     [Header("Network Settings")]
-    public float interpolationSpeed = 50f; // Aumentado aún más para mejor responsividad
+    public float interpolationSpeed = 200f; // SÚPER RÁPIDO para velocidades extremas
     public float rotationInterpolationSpeed = 60f; // Aumentado aún más para mejor responsividad
     public float velocityInterpolationSpeed = 45f; // Aumentado aún más para mejor responsividad
     public float spinInterpolationSpeed = 80f; // Aumentado significativamente para animación más fluida
@@ -158,6 +159,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         if (transform.position.y < fallDeathHeight)
         {
             // Muerte por caída - forzar respawn inmediato
+            currentHealth = 0f;
+            Die();
+        }
+        
+        // 🏟️ DETECCIÓN DE LÍMITES DE ARENA - Morir si sales del radio
+        Vector3 arenaCenter = Vector3.zero; // Asumiendo arena centrada en (0,0,0)
+        float distanceFromCenter = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), arenaCenter);
+        if (distanceFromCenter > arenaRadius)
+        {
+            Debug.Log($"🏟️💀 FUERA DE ARENA: Player {photonView.OwnerActorNr} salió del radio ({distanceFromCenter:F1} > {arenaRadius})");
             currentHealth = 0f;
             Die();
         }
