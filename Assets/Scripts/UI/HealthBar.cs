@@ -36,59 +36,44 @@ public class HealthBar : MonoBehaviour
     
     void Start()
     {
-        // Retrasar la inicialización para que el HealthBarManager configure el targetPlayer primero
-        Invoke(nameof(InitializeHealthBar), 0.1f);
+        // Inicialización simple y directa
+        InitializeHealthBar();
     }
     
-    void InitializeHealthBar()
+    public void InitializeHealthBar()
     {
+        Debug.Log($"🏥🚀 INITIALIZING HealthBar - TargetPlayer: {targetPlayer?.name}");
+        
         // Buscar cámara principal
         mainCamera = Camera.main;
-        if (mainCamera == null)
-        {
-            mainCamera = FindFirstObjectByType<Camera>();
-        }
+        if (mainCamera == null) mainCamera = FindFirstObjectByType<Camera>();
         
-        // Si no hay target player asignado, buscar automáticamente
+        // Si no hay targetPlayer, salir (será asignado por HealthBarManager)
         if (targetPlayer == null)
         {
-            targetPlayer = FindFirstObjectByType<PlayerController>();
-            Debug.Log("🏥⚠️ TargetPlayer was null, found automatically");
-        }
-        
-        // Si aún no hay targetPlayer, intentar más tarde
-        if (targetPlayer == null)
-        {
-            Debug.LogWarning("🏥❌ No PlayerController found, retrying in 0.5s...");
-            Invoke(nameof(InitializeHealthBar), 0.5f);
+            Debug.LogWarning("🏥⚠️ TargetPlayer is null, skipping initialization");
             return;
         }
         
-        if (targetPlayer != null)
+        // Obtener valores de salud
+        currentHealth = targetPlayer.CurrentHealth;
+        maxHealth = targetPlayer.MaxHealth;
+        Debug.Log($"🏥💖 Health values: {currentHealth}/{maxHealth}");
+        
+        // Configurar Canvas si no existe
+        if (healthCanvas == null)
         {
-            // Obtener valores iniciales de salud
-            currentHealth = targetPlayer.CurrentHealth;
-            maxHealth = targetPlayer.MaxHealth;
-            
-            Debug.Log($"🏥🔧 Initial health values: Current={currentHealth}, Max={maxHealth}");
-            
-            // VERIFICACIÓN CRÍTICA: Si los valores están mal, intentar obtenerlos de nuevo
-            if (currentHealth <= 0 || maxHealth <= 0)
-            {
-                Debug.LogWarning($"🏥⚠️ Valores incorrectos detectados! Reintentando...");
-                
-                // Esperar un frame y volver a intentar
-                StartCoroutine(RetryHealthInitialization());
-                return;
-            }
-            
-            // Continuar con la inicialización normal
-            ContinueInitialization();
+            healthCanvas = GetComponentInParent<Canvas>();
         }
-        else
-        {
-            Debug.LogWarning("No PlayerController found for HealthBar");
-        }
+        
+        // Configurar componentes UI
+        SetupUIComponents();
+        
+        // Actualizar barra inicial
+        UpdateHealthBar();
+        
+        isInitialized = true;
+        Debug.Log($"🏥✅ HealthBar initialized for {targetPlayer.name}");
     }
     
     void CreateHealthCanvas()
@@ -115,35 +100,36 @@ public class HealthBar : MonoBehaviour
     
     void SetupUIComponents()
     {
-        // Buscar componentes UI creados por HealthBarManager por nombre específico
-        Transform backgroundTransform = transform.Find("Background");
-        if (backgroundTransform != null)
+        // MÉTODO DIRECTO: Buscar en toda la jerarquía por nombre exacto
+        healthBarBackground = transform.GetComponentInChildren<Image>();
+        
+        // Buscar el fill específicamente por nombre "HealthFill"
+        Transform[] allChildren = GetComponentsInChildren<Transform>();
+        foreach (Transform child in allChildren)
         {
-            healthBarBackground = backgroundTransform.GetComponent<Image>();
-            
-            // Buscar el fill dentro del background
-            Transform fillTransform = backgroundTransform.Find("HealthFill");
-            if (fillTransform != null)
+            if (child.name == "HealthFill")
             {
-                healthBarFill = fillTransform.GetComponent<Image>();
-                Debug.Log($"🏥✅ UI Components found by name: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+                healthBarFill = child.GetComponent<Image>();
+                break;
             }
-            else
-            {
-                Debug.LogError("🏥❌ HealthFill not found inside Background!");
-            }
+        }
+        
+        // Verificar que encontramos los componentes
+        if (healthBarBackground != null && healthBarFill != null)
+        {
+            Debug.Log($"🏥✅ Components found: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+            Debug.Log($"🏥🔍 Fill initial state: Amount={healthBarFill.fillAmount}, Color={healthBarFill.color}, Type={healthBarFill.type}");
         }
         else
         {
-            Debug.LogError("🏥❌ Background not found in children!");
+            Debug.LogError($"🏥❌ Components missing! Background={healthBarBackground != null}, Fill={healthBarFill != null}");
             
-            // Fallback: buscar por componentes
-            Image[] images = GetComponentsInChildren<Image>();
-            if (images.Length >= 2)
+            // Debug completo de la jerarquía
+            Debug.LogError("🏥🔍 Full hierarchy:");
+            foreach (Transform child in allChildren)
             {
-                healthBarBackground = images[0];
-                healthBarFill = images[1];
-                Debug.Log($"🏥⚠️ Using fallback method: Background={healthBarBackground.name}, Fill={healthBarFill.name}");
+                Image img = child.GetComponent<Image>();
+                Debug.LogError($"  - {child.name} (Image: {img != null}, FillAmount: {(img?.fillAmount.ToString() ?? "N/A")})");
             }
         }
         
@@ -250,61 +236,25 @@ public class HealthBar : MonoBehaviour
     
     void UpdateHealthBar()
     {
-        if (healthBarFill == null) return;
+        if (healthBarFill == null)
+        {
+            Debug.LogError("🏥❌ healthBarFill is NULL!");
+            return;
+        }
         
         // Calcular porcentaje de salud
-        float healthPercentage = maxHealth > 0 ? currentHealth / maxHealth : 0f;
+        float healthPercentage = maxHealth > 0 ? currentHealth / maxHealth : 1f;
         
-        // DEBUG CRÍTICO: Verificar valores
-        if (healthPercentage == 0f)
-        {
-            Debug.LogError($"🏥💀 PROBLEMA: healthPercentage = 0! Current={currentHealth}, Max={maxHealth}, Player={targetPlayer?.name}");
-            
-            // Si el player existe, obtener valores directamente
-            if (targetPlayer != null)
-            {
-                float realCurrent = targetPlayer.CurrentHealth;
-                float realMax = targetPlayer.MaxHealth;
-                Debug.LogError($"🏥🔍 Valores REALES del player: Current={realCurrent}, Max={realMax}");
-                
-                // Usar valores reales si están disponibles
-                if (realMax > 0)
-                {
-                    currentHealth = realCurrent;
-                    maxHealth = realMax;
-                    healthPercentage = realCurrent / realMax;
-                    Debug.LogError($"🏥🔧 CORREGIDO: healthPercentage = {healthPercentage:F2}");
-                }
-            }
-        }
+        // LOG CRÍTICO
+        Debug.Log($"🏥📊 UPDATE: {currentHealth:F0}/{maxHealth:F0} = {healthPercentage:F2} → FillAmount");
         
         // Actualizar fill amount
-        float oldFillAmount = healthBarFill.fillAmount;
-        
-        // PROTECCIÓN: No permitir fillAmount = 0 a menos que realmente esté muerto
-        if (healthPercentage == 0f && targetPlayer != null && targetPlayer.CurrentHealth > 0)
-        {
-            Debug.LogWarning($"🏥🛡️ PROTECCIÓN: Evitando fillAmount = 0 cuando health > 0. Player health: {targetPlayer.CurrentHealth}");
-            healthPercentage = 1f; // Forzar al 100% como fallback
-        }
-        
         healthBarFill.fillAmount = healthPercentage;
         
-        // Debug si cambió el fill amount
-        if (Mathf.Abs(oldFillAmount - healthPercentage) > 0.01f)
-        {
-            Debug.Log($"🏥🔄 Fill amount changed: {oldFillAmount:F2} → {healthPercentage:F2} (Health: {currentHealth:F0}/{maxHealth:F0})");
-        }
-        
-        // EMERGENCIA: Forzar color verde si está al 100%
-        if (healthPercentage >= 0.99f && healthBarFill.color != Color.green)
-        {
-            Debug.Log($"🏥🚨 EMERGENCY: Forcing green color! Current color was: {healthBarFill.color}");
-            healthBarFill.color = Color.green;
-        }
-        
-        // Actualizar color basado en la salud
-        UpdateHealthColor(healthPercentage);
+        // Actualizar color
+        if (healthPercentage > 0.7f) healthBarFill.color = Color.green;
+        else if (healthPercentage > 0.3f) healthBarFill.color = Color.yellow;
+        else healthBarFill.color = Color.red;
         
         // Actualizar texto
         if (healthText != null)
@@ -312,12 +262,7 @@ public class HealthBar : MonoBehaviour
             healthText.text = $"{Mathf.RoundToInt(currentHealth)}/{Mathf.RoundToInt(maxHealth)}";
         }
         
-        // Debug (reducido)
-        if (Time.time - lastDebugTime > 2f) // Solo cada 2s
-        {
-            Debug.Log($"🏥📊 HealthBar update: {currentHealth:F0}/{maxHealth:F0} ({healthPercentage:P0}) - Fill: {(healthBarFill != null ? healthBarFill.fillAmount.ToString("F2") : "NULL")} - FillType: {(healthBarFill != null ? healthBarFill.type.ToString() : "NULL")}");
-            lastDebugTime = Time.time;
-        }
+        Debug.Log($"🏥✅ Fill updated: Amount={healthBarFill.fillAmount:F2}, Color={healthBarFill.color}");
     }
     
     void UpdateHealthColor(float healthPercentage)

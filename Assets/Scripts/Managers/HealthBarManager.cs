@@ -163,7 +163,7 @@ public class HealthBarManager : MonoBehaviour
         // Agregar componente HealthBar
         HealthBar healthBar = healthBarGO.AddComponent<HealthBar>();
         
-        // Configurar la health bar
+        // ¡CRÍTICO! Configurar targetPlayer INMEDIATAMENTE antes de que Start() se ejecute
         healthBar.targetPlayer = player;
         healthBar.offset = healthBarOffset;
         healthBar.followPlayer = true;
@@ -195,8 +195,8 @@ public class HealthBarManager : MonoBehaviour
         // Agregar a la lista de health bars
         playerHealthBars[playerId] = healthBar;
         
-        // Forzar inicialización ahora que el targetPlayer está configurado
-        healthBar.ForceInitialize();
+        // Reinicializar ahora que el targetPlayer está configurado
+        healthBar.InitializeHealthBar();
         
         Debug.Log($"🏥✅ Health bar created successfully for {player.name} (Local: {isLocalPlayer}) at position {healthBarGO.transform.position}");
     }
