@@ -207,9 +207,9 @@ public class HealthBarManager : MonoBehaviour
         canvas.worldCamera = mainCamera;
         canvas.sortingOrder = 100;
         
-        // Configurar Canvas
+        // Configurar Canvas - MÁS LARGA
         RectTransform canvasRect = canvasGO.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(100f, 20f);
+        canvasRect.sizeDelta = new Vector2(150f, 25f); // Más ancha y un poco más alta
         canvasRect.localScale = Vector3.one * 0.01f;
         
         // Posicionar sobre el jugador
