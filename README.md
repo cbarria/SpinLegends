@@ -8,7 +8,14 @@ Fast, phone‑friendly arena battles with networked spinning tops. Built with Un
 - Mobile‑ready UI fixes (no stretching/zoom), touch joystick focus/recovery, Android debug overlay
 - Floating health bars per player + optional top HUD health slider
 - Lightweight status line: Connecting / Joining / Creating / Players: N
-- Simple scoreboard (per‑player points on KO)
+- Simple scoreboard (per‑player points on KO, now including score display)
+
+## Recent Updates
+- Fixed duplicate death registrations (debounce on RegisterDeath)
+- Added score display to SimpleScoreboard without breaking existing kills/deaths
+- Improved player name synchronization across clients (especially for master client)
+- Enhanced disconnection handling: properly remove player objects and health bars
+- General stability: reduced destruction delays, better event handling for explosions/sounds
 
 ## Quick Start
 1) Unity 2022.3 LTS+, Photon PUN (set your AppId)
@@ -27,7 +34,7 @@ Fast, phone‑friendly arena battles with networked spinning tops. Built with Un
   - Floating `HealthBar` per player via `HealthBarManager`
   - Optional global `HealthSlider` (assign to `GameManager.healthBar`)
   - `ConnectionStatusUI`: compact status line (Connecting / Joining t/T / Creating / Players: N)
-  - `ScoreManager` + `ScoreboardUI`: simple KO score broadcast by master
+  - `ScoreManager` + `SimpleScoreboard`: simple KO score broadcast by master, now with score
   - Android overlay debug (optional) and joystick focus/recovery helpers
 
 ## Android Notes
@@ -43,13 +50,14 @@ Assets/Scripts/
     PlayerSpawnManager.cs
     GameManager.cs
     HealthBarManager.cs
+    ScoreManager.cs
   Player/
     PlayerController.cs
     NetworkPlayerCollision.cs
   UI/
     HealthBar.cs
     ConnectionStatusUI.cs
-    ScoreboardUI.cs
+    SimpleScoreboard.cs
 ```
 
 ## Credits
