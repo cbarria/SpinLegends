@@ -2,8 +2,9 @@ using UnityEngine;
 using Photon.Pun;
 using System.Collections.Generic;
 using Photon.Realtime;
+using ExitGames.Client.Photon;
 
-public class ScoreManager : MonoBehaviourPun, IOnEventCallback
+public class ScoreManager : MonoBehaviourPun, Photon.Realtime.IOnEventCallback
 {
     public static ScoreManager Instance;
 

@@ -407,9 +407,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Dar puntos solo si fue por combate (legacy)
             if (lastHitByActor != 0)
             {
-                object[] content = new object[] { lastHitByActor, photonView.OwnerActorNr, photonView.ViewID };
-                RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
-                PhotonNetwork.RaiseEvent(103, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
+                object[] killContent = new object[] { lastHitByActor, photonView.OwnerActorNr, photonView.ViewID };
+                RaiseEventOptions killOptions = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+                PhotonNetwork.RaiseEvent(103, killContent, killOptions, ExitGames.Client.Photon.SendOptions.SendReliable);
             }
             
             // SIEMPRE hacer respawn, sin importar la causa de muerte
@@ -640,5 +640,24 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 }
             }
         }
+    }
+
+    public bool IsSpinning()
+    {
+        return isSpinning;
+    }
+
+    public Rigidbody Rigidbody => rb;
+
+    // Propiedad pública para acceder a la salud actual
+    public float CurrentHealth => currentHealth;
+
+    // Propiedad pública para acceder a la salud máxima
+    public float MaxHealth => maxHealth;
+
+    // Método para debug del joystick (logs removidos)
+    public void TestJoystick()
+    {
+        // Test silencioso
     }
 } 
