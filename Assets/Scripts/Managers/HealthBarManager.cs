@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using Photon.Pun;
 using TMPro;
+using Photon.Realtime;
 
 public class HealthBarManager : MonoBehaviour
 {
@@ -50,8 +51,13 @@ public class HealthBarManager : MonoBehaviour
         GameObject nameGO = new GameObject("PlayerName");
         nameGO.transform.SetParent(canvasGO.transform, false);
         TextMeshProUGUI nameText = nameGO.AddComponent<TextMeshProUGUI>();
+        
+        // Improved name fetching with sync check
         int actorNumber = player.photonView.Owner.ActorNumber;
-        string playerName = string.IsNullOrEmpty(player.photonView.Owner.NickName) ? $"Player {actorNumber}" : player.photonView.Owner.NickName;
+        Player photonPlayer = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber);
+        string playerName = (photonPlayer != null && !string.IsNullOrEmpty(photonPlayer.NickName)) 
+            ? photonPlayer.NickName 
+            : $"Player {actorNumber}";
         nameText.text = playerName;
         nameText.fontSize = 0.5f;
         nameText.color = Color.white;
@@ -104,8 +110,55 @@ public class HealthBarManager : MonoBehaviour
         targetAnchorX[player] = 1f; // Initial full health
         
         Debug.Log("Created health bar for player " + id + " with name: " + nameText.text + " and font: " + (font != null ? font.name : "NONE"));
+        
+        // Add a small delay to ensure NickName is synced
+        StartCoroutine(DelayedNameSetup(player, id));
     }
-    
+
+    System.Collections.IEnumerator DelayedNameSetup(PlayerController player, int id)
+    {
+        yield return new WaitForSeconds(0.5f); // Small delay for sync
+        
+        GameObject canvasGO = healthBars[id];
+        TextMeshProUGUI nameText = canvasGO.GetComponentInChildren<TextMeshProUGUI>();
+        if (nameText != null)
+        {
+            int actorNumber = player.photonView.Owner.ActorNumber;
+            Player photonPlayer = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber);
+            string playerName = (photonPlayer != null && !string.IsNullOrEmpty(photonPlayer.NickName)) 
+                ? photonPlayer.NickName 
+                : $"Player {actorNumber}";
+            nameText.text = playerName;
+        }
+    }
+
+    // New RPC to force name update on all clients
+    public void UpdatePlayerName(int actorNumber, string newName)
+    {
+        PlayerController player = FindPlayerByActor(actorNumber);
+        if (player != null && healthBars.ContainsKey(player.photonView.ViewID))
+        {
+            GameObject canvasGO = healthBars[player.photonView.ViewID];
+            TextMeshProUGUI nameText = canvasGO.GetComponentInChildren<TextMeshProUGUI>();
+            if (nameText != null)
+            {
+                nameText.text = newName;
+            }
+        }
+    }
+
+    // Helper to find player by actor number
+    PlayerController FindPlayerByActor(int actorNumber)
+    {
+        PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var p in players)
+        {
+            if (p.photonView.Owner.ActorNumber == actorNumber)
+                return p;
+        }
+        return null;
+    }
+
     void UpdateHealthBar(PlayerController player, int id)
     {
         if (!healthBars.ContainsKey(id)) return;
@@ -186,6 +239,19 @@ public class HealthBarManager : MonoBehaviour
         }
         if (textGO != null) Destroy(textGO);
     }
+
+    public void RemoveHealthBarForPlayer(int actorNumber)
+    {
+        foreach (var kvp in healthBars)
+        {
+            if (kvp.Key == actorNumber) // Assuming id is actorNumber, adjust if needed
+            {
+                Destroy(kvp.Value);
+                healthBars.Remove(kvp.Key);
+                break;
+            }
+        }
+    }
     
     void CleanupHealthBars()
     {
@@ -196,8 +262,14 @@ public class HealthBarManager : MonoBehaviour
             int id = kvp.Key;
             bool playerExists = false;
             
-            PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-            foreach (var player in players)
+            if (FindObjectsByType<PlayerController>(FindObjectsSortMode.None) == null) // Adjust accordingly
+            {
+                toRemove.Add(id);
+                if (kvp.Value != null) Destroy(kvp.Value);
+                continue;
+            }
+
+            foreach (var player in FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
             {
                 if (player != null && player.photonView != null && player.photonView.ViewID == id)
                 {

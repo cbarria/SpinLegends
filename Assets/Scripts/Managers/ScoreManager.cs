@@ -11,6 +11,7 @@ public class ScoreManager : MonoBehaviourPun, Photon.Realtime.IOnEventCallback
     private Dictionary<int, int> actorToScore = new Dictionary<int, int>();
     private Dictionary<int, int> actorToKills = new Dictionary<int, int>();
     private Dictionary<int, int> actorToDeaths = new Dictionary<int, int>();
+    private Dictionary<int, float> lastDeathTime = new Dictionary<int, float>(); // To debounce deaths
 
     void Awake()
     {
@@ -85,6 +86,14 @@ public class ScoreManager : MonoBehaviourPun, Photon.Realtime.IOnEventCallback
     public void RegisterDeath(int victimActor, int victimViewID)
     {
         if (!PhotonNetwork.IsMasterClient) return;
+        
+        // Debounce: ignore if same actor died within 1 second
+        if (lastDeathTime.ContainsKey(victimActor) && Time.time - lastDeathTime[victimActor] < 1f)
+        {
+            Debug.Log($"Ignored duplicate death for Actor {victimActor}");
+            return;
+        }
+        lastDeathTime[victimActor] = Time.time;
         
         // Solo incrementar deaths
         if (!actorToDeaths.ContainsKey(victimActor)) actorToDeaths[victimActor] = 0;

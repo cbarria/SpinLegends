@@ -244,27 +244,27 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
             Debug.Log("Received death explosion event at position: " + position);
 
-            // Particles
+            // Particles - reduced for smaller explosion
             GameObject explosionObj = new GameObject("DeathExplosion");
             explosionObj.transform.position = position;
             var ps = explosionObj.AddComponent<ParticleSystem>();
             var main = ps.main;
             main.startLifetime = 1f;
-            main.startSpeed = new ParticleSystem.MinMaxCurve(8f, 12f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(5f, 8f); // Reduced speed
             main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
             main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
-            main.maxParticles = 400;
+            main.maxParticles = 200; // Reduced particles
             main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
             var emission = ps.emission;
             emission.enabled = true;
             emission.rateOverTime = 0;
             emission.SetBursts(new ParticleSystem.Burst[] {
-                new ParticleSystem.Burst(0f, 300),
-                new ParticleSystem.Burst(0.2f, 100)
+                new ParticleSystem.Burst(0f, 150), // Reduced burst
+                new ParticleSystem.Burst(0.2f, 50) // Reduced second burst
             });
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 1.5f;
+            shape.radius = 1.0f; // Reduced radius
             ps.Play();
             Destroy(explosionObj, 2f);
 
@@ -273,7 +273,8 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
             if (explosionClip != null)
             {
                 Debug.Log("Playing explosion sound locally");
-                AudioSource.PlayClipAtPoint(explosionClip, position, 1.5f); // Increased volume
+                float volume = Application.isMobilePlatform ? 1.5f : 1.0f; // 1.5x on mobile, normal on PC
+                AudioSource.PlayClipAtPoint(explosionClip, position, volume);
             }
             else
             {
@@ -313,6 +314,13 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
                 {
                     PhotonNetwork.Destroy(p.gameObject);
                 }
+            }
+            
+            // Clean up health bar
+            var healthBarManager = FindFirstObjectByType<HealthBarManager>();
+            if (healthBarManager != null)
+            {
+                healthBarManager.RemoveHealthBarForPlayer(otherPlayer.ActorNumber);
             }
         }
     }

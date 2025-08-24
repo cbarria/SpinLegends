@@ -47,6 +47,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     
     private AudioSource audioSource;
 
+    // New flag to prevent multiple death triggers
+    private bool isDying = false;
+
     void Start()
     {
         currentHealth = maxHealth;
@@ -97,6 +100,19 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         else
         {
             // Para jugadores remotos ya se configuró interpolación arriba
+        }
+
+        // Set NickName if not already set
+        if (photonView.IsMine && string.IsNullOrEmpty(PhotonNetwork.NickName))
+        {
+            PhotonNetwork.NickName = "Player " + PhotonNetwork.LocalPlayer.ActorNumber;
+            
+            // Call public method instead of RPC
+            var healthBarManager = FindFirstObjectByType<HealthBarManager>(); // Use FindFirst to fix obsolete
+            if (healthBarManager != null)
+            {
+                healthBarManager.UpdatePlayerName(PhotonNetwork.LocalPlayer.ActorNumber, PhotonNetwork.NickName);
+            }
         }
 
         // Enlarge hitbox slightly
@@ -182,7 +198,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     void CheckPositionDeath()
     {
         // 🕳️ DETECCIÓN DE CAÍDA - TODOS los players checkean su posición
-        if (transform.position.y < fallDeathHeight)
+        if (transform.position.y < fallDeathHeight && !isDying)
         {
             Debug.Log($"🕳️💀 CAÍDA DETECTADA: Player {photonView.OwnerActorNr} cayó a Y={transform.position.y:F1} (límite: {fallDeathHeight}) - IsMine: {photonView.IsMine}");
             // Muerte por caída - forzar respawn inmediato
@@ -193,7 +209,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // 🏟️ DETECCIÓN DE LÍMITES DE ARENA - TODOS checkean límites
         Vector3 arenaCenter = Vector3.zero; // Asumiendo arena centrada en (0,0,0)
         float distanceFromCenter = Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), arenaCenter);
-        if (distanceFromCenter > arenaRadius)
+        if (distanceFromCenter > arenaRadius && !isDying)
         {
             Debug.Log($"🏟️💀 FUERA DE ARENA: Player {photonView.OwnerActorNr} salió del radio ({distanceFromCenter:F1} > {arenaRadius}) - IsMine: {photonView.IsMine}");
             currentHealth = 0f;
@@ -393,9 +409,14 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         AudioClip impactClip = Resources.Load<AudioClip>("Audio/" + randomClipName);
         if (impactClip != null)
         {
-            audioSource.pitch = Random.Range(0.9f, 1.1f); // Slight randomization
-            audioSource.PlayOneShot(impactClip, 1f);
-            audioSource.pitch = 1f; // Reset
+            // Create temporary audio object
+            GameObject audioObj = new GameObject("ImpactSound");
+            audioObj.transform.position = collisionPoint;
+            AudioSource tempAudio = audioObj.AddComponent<AudioSource>();
+            tempAudio.spatialBlend = 1f;
+            tempAudio.pitch = Random.Range(0.9f, 1.1f);
+            tempAudio.PlayOneShot(impactClip, 1f);
+            Destroy(audioObj, impactClip.length + 0.1f);
         }
         else
         {
@@ -445,6 +466,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
 
     void Die()
     {
+        if (isDying) return;
+        isDying = true;
+
         Debug.Log($"💀 DIE: Player {photonView.OwnerActorNr} murió - IsMine: {photonView.IsMine}, Inmune: {isImmune}");
         
         // Liberar spawn point
@@ -452,6 +476,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         if (spawnMgr != null)
         {
             spawnMgr.ReleaseSpawnPoint(photonView.OwnerActorNr);
+        }
+        
+        // Immediately disable renderer to make spinner visually disappear
+        Renderer spinnerRenderer = GetComponentInChildren<Renderer>(); // Assuming the spinner has a Renderer component
+        if (spinnerRenderer != null)
+        {
+            spinnerRenderer.enabled = false;
         }
         
         if (photonView.IsMine)
@@ -480,16 +511,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             var options = new Photon.Realtime.RaiseEventOptions { Receivers = Photon.Realtime.ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(102, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
 
-            // Raise event for death explosion
+            // Raise event for death explosion after visual disappearance
             object[] explosionContent = new object[] { transform.position };
             RaiseEventOptions explosionOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All };
             PhotonNetwork.RaiseEvent(105, explosionContent, explosionOptions, ExitGames.Client.Photon.SendOptions.SendReliable);
 
-            // Sync explosion effects to all clients
-            photonView.RPC("PlayDeathExplosionRPC", RpcTarget.All);
-
-            // Destruir el objeto simple
-            PhotonNetwork.Destroy(gameObject);
+            // Delay actual destruction to allow RPCs and effects to complete
+            StartCoroutine(DestroyAfterDelay(0.5f));  // Reduced to 0.5 seconds for faster disappearance
         }
     }
     
@@ -724,51 +752,12 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         // Test silencioso
     }
 
-    [PunRPC]
-    void PlayDeathExplosionRPC()
+    System.Collections.IEnumerator DestroyAfterDelay(float delay)
     {
-        Debug.Log("Playing death explosion for ViewID: " + photonView.ViewID);
-
-        // Particles
-        GameObject explosionObj = new GameObject("DeathExplosion");
-        explosionObj.transform.position = transform.position;
-        var ps = explosionObj.AddComponent<ParticleSystem>();
-        var main = ps.main;
-        main.startLifetime = 1f;
-        main.startSpeed = new ParticleSystem.MinMaxCurve(8f, 12f); // Randomized speed
-        main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.3f); // Randomized size
-        main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
-        main.maxParticles = 400;
-        main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
-        var emission = ps.emission;
-        emission.enabled = true;
-        emission.rateOverTime = 0;
-        emission.SetBursts(new ParticleSystem.Burst[] {
-            new ParticleSystem.Burst(0f, 300),
-            new ParticleSystem.Burst(0.2f, 100) // Second burst for prolonged effect
-        });
-        var shape = ps.shape;
-        shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 1.5f;
-        ps.Play();
-        Destroy(explosionObj, 2f);
-
-        // Sound
-        if (audioSource == null)
+        yield return new WaitForSeconds(delay);
+        if (this != null && gameObject != null)
         {
-            Debug.LogWarning("audioSource missing for explosion sound");
-            return;
-        }
-
-        AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
-        if (explosionClip != null)
-        {
-            Debug.Log("Explosion clip loaded, playing...");
-            audioSource.PlayOneShot(explosionClip, 1.2f);
-        }
-        else
-        {
-            Debug.LogWarning("death_explosion clip not found");
+            PhotonNetwork.Destroy(gameObject);
         }
     }
 } 
