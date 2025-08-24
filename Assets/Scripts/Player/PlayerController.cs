@@ -448,6 +448,23 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     void NotifyDeathRPC(int actorNumber)
     {
         // Master recibe notificación de muerte
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log($"🏆 Master recibió notificación de muerte del Player {actorNumber}");
+            
+            // Notificar al ScoreManager para registrar la muerte
+            var scoreManager = FindFirstObjectByType<ScoreManager>();
+            if (scoreManager != null)
+            {
+                // Registrar muerte sin killer (caída, etc.)
+                scoreManager.RegisterDeath(actorNumber, photonView.ViewID);
+                Debug.Log($"🏆 ScoreManager notificado de muerte del Player {actorNumber}");
+            }
+            else
+            {
+                Debug.LogError("❌ ScoreManager no encontrado para registrar muerte!");
+            }
+        }
     }
 
 
@@ -522,7 +539,13 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         var scoreMgr = FindFirstObjectByType<ScoreManager>();
         if (scoreMgr != null)
         {
-            scoreMgr.AddScoreMaster(attackerActor, 100);
+            // Registrar kill y death en el ScoreManager
+            scoreMgr.RegisterKill(attackerActor, victimActor, photonView.ViewID);
+            Debug.Log($"🏆 ScoreManager notificado de kill: Player {attackerActor} mató a Player {victimActor}");
+        }
+        else
+        {
+            Debug.LogError("❌ ScoreManager no encontrado para registrar kill!");
         }
     }
     

@@ -40,16 +40,20 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         var image = panel.AddComponent<Image>();
         
         // Configuración SIMPLE del panel con borde
-        image.color = new Color(0.1f, 0.1f, 0.3f, 0.9f);
+        image.color = Color.white; // Dejar que el sprite controle los colores
         image.sprite = CreateBorderSprite();
-        rectTransform.anchorMin = new Vector2(0.75f, 0.7f);
-        rectTransform.anchorMax = new Vector2(0.98f, 0.95f);
+        image.type = Image.Type.Sliced;
+        rectTransform.anchorMin = new Vector2(0.7f, 0.73f);
+        rectTransform.anchorMax = new Vector2(0.98f, 0.98f);
         rectTransform.sizeDelta = Vector2.zero;
         
         scoreboardPanel = panel;
         
         // Crear título
         CreateTitle(panel);
+        
+        // Crear etiquetas de columnas
+        CreateColumnLabels(panel);
         
         // Crear lista de jugadores
         CreatePlayerList(panel);
@@ -62,31 +66,68 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         // Crear una textura 9-slice para el borde
         int size = 64;
         Texture2D texture = new Texture2D(size, size);
-        
+
+        // Borde más grueso y consistente
+        int borderThickness = 3;
+
         Color[] pixels = new Color[size * size];
         for (int x = 0; x < size; x++)
         {
             for (int y = 0; y < size; y++)
             {
-                // Borde blanco en los bordes
-                if (x < 2 || x > size - 3 || y < 2 || y > size - 3)
+                // Borde amarillo más delgado
+                if (x < borderThickness || x > size - borderThickness - 1 ||
+                    y < borderThickness || y > size - borderThickness - 1)
                 {
-                    pixels[y * size + x] = Color.white;
+                    pixels[y * size + x] = Color.yellow;
                 }
                 else
                 {
-                    pixels[y * size + x] = Color.clear;
+                    pixels[y * size + x] = new Color(0.1f, 0.1f, 0.3f, 0.9f); // Mismo color que el panel
                 }
             }
         }
-        
+
         texture.SetPixels(pixels);
         texture.Apply();
-        
-        // Crear sprite con 9-slice para escalar correctamente
-        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(8, 8, 8, 8));
-        
+
+        // Crear sprite con 9-slice - usar el mismo grosor que el borde pintado
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(borderThickness, borderThickness, borderThickness, borderThickness));
+
         return sprite;
+    }
+    
+    void CreateColumnLabels(GameObject parent)
+    {
+        // Etiqueta para Kills
+        GameObject killsLabel = new GameObject("KillsLabel");
+        killsLabel.transform.SetParent(parent.transform, false);
+        
+        var killsLabelText = killsLabel.AddComponent<TextMeshProUGUI>();
+        killsLabelText.text = "K";
+        killsLabelText.fontSize = 12;
+        killsLabelText.color = Color.yellow;
+        killsLabelText.alignment = TextAlignmentOptions.Center;
+        
+        var killsLabelRect = killsLabel.GetComponent<RectTransform>();
+        killsLabelRect.anchorMin = new Vector2(0.6f, 0.65f);
+        killsLabelRect.anchorMax = new Vector2(0.8f, 0.7f);
+        killsLabelRect.sizeDelta = Vector2.zero;
+        
+        // Etiqueta para Deaths
+        GameObject deathsLabel = new GameObject("DeathsLabel");
+        deathsLabel.transform.SetParent(parent.transform, false);
+        
+        var deathsLabelText = deathsLabel.AddComponent<TextMeshProUGUI>();
+        deathsLabelText.text = "D";
+        deathsLabelText.fontSize = 12;
+        deathsLabelText.color = Color.gray;
+        deathsLabelText.alignment = TextAlignmentOptions.Center;
+        
+        var deathsLabelRect = deathsLabel.GetComponent<RectTransform>();
+        deathsLabelRect.anchorMin = new Vector2(0.8f, 0.65f);
+        deathsLabelRect.anchorMax = new Vector2(1, 0.7f);
+        deathsLabelRect.sizeDelta = Vector2.zero;
     }
     
     void CreateTitle(GameObject parent)
@@ -101,8 +142,8 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         titleText.alignment = TextAlignmentOptions.Center;
         
         var titleRect = title.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0, 0.85f);
-        titleRect.anchorMax = new Vector2(1, 1f);
+        titleRect.anchorMin = new Vector2(0, 0.8f);
+        titleRect.anchorMax = new Vector2(1, 0.95f);
         titleRect.sizeDelta = Vector2.zero;
     }
     
@@ -114,7 +155,7 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         
         var listRect = listContainer.AddComponent<RectTransform>();
         listRect.anchorMin = new Vector2(0, 0.1f);
-        listRect.anchorMax = new Vector2(1, 0.8f);
+        listRect.anchorMax = new Vector2(1, 0.7f);
         listRect.sizeDelta = Vector2.zero;
         
         // Crear entradas de jugadores
@@ -136,8 +177,8 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         entry.transform.SetParent(parent.transform, false);
         
         var entryRect = entry.AddComponent<RectTransform>();
-        entryRect.anchorMin = new Vector2(0, 0.75f - (index * 0.15f));
-        entryRect.anchorMax = new Vector2(1, 0.9f - (index * 0.15f));
+        entryRect.anchorMin = new Vector2(0, 0.6f - (index * 0.18f));
+        entryRect.anchorMax = new Vector2(1, 0.75f - (index * 0.18f));
         entryRect.sizeDelta = Vector2.zero;
         
         // Nombre del jugador
@@ -154,8 +195,8 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         nameRect.anchorMin = new Vector2(0, 0);
         nameRect.anchorMax = new Vector2(0.6f, 1f);
         nameRect.sizeDelta = Vector2.zero;
-        nameRect.offsetMin = new Vector2(5, 0);
-        nameRect.offsetMax = new Vector2(-5, 0);
+        nameRect.offsetMin = new Vector2(10, 0);
+        nameRect.offsetMax = new Vector2(-10, 0);
         
         // Kills
         GameObject killsGO = new GameObject("Kills");
@@ -200,6 +241,8 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
         var players = PhotonNetwork.PlayerList;
         if (players.Length == 0) return;
         
+        Debug.Log($"🏆 Actualizando scoreboard con {players.Length} jugadores");
+        
         // Actualizar solo las entradas que existen
         for (int i = 0; i < Mathf.Min(players.Length, 4); i++)
         {
@@ -212,11 +255,17 @@ public class SimpleScoreboard : MonoBehaviourPunCallbacks
                 var killsText = entry.Find("Kills").GetComponent<TextMeshProUGUI>();
                 var deathsText = entry.Find("Deaths").GetComponent<TextMeshProUGUI>();
                 
-                // Usar nombre del jugador o "Player X"
-                string playerName = string.IsNullOrEmpty(player.NickName) ? $"Player {player.ActorNumber}" : player.NickName;
-                nameText.text = playerName;
-                killsText.text = scoreManager.GetKills(player.ActorNumber).ToString();
-                deathsText.text = scoreManager.GetDeaths(player.ActorNumber).ToString();
+                                 // Usar nombre del jugador o "Player X"
+                 string playerName = string.IsNullOrEmpty(player.NickName) ? $"Player {player.ActorNumber}" : player.NickName;
+                 int kills = scoreManager.GetKills(player.ActorNumber);
+                 int deaths = scoreManager.GetDeaths(player.ActorNumber);
+                 
+                 nameText.text = playerName;
+                 killsText.text = kills.ToString();
+                 deathsText.text = deaths.ToString();
+                 
+                 Debug.Log($"🏆 Instancia {playerName} (Actor {player.ActorNumber}): Kills={kills}, Deaths={deaths}");
+                 Debug.Log($"🏆 ScoreManager: {scoreManager.GetType().Name}, IsNull: {scoreManager == null}");
                 
                 // Color especial para el jugador local
                 if (player == PhotonNetwork.LocalPlayer)

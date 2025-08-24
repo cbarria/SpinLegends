@@ -115,10 +115,36 @@ public class GameManager : MonoBehaviour
     {
         GameObject scoreManagerObj = new GameObject("ScoreManager");
         var scoreManager = scoreManagerObj.AddComponent<ScoreManager>();
-        // Agregar PhotonView para RPCs - NO asignar ViewID manualmente
+        
+        // Agregar PhotonView para RPCs
         var photonView = scoreManagerObj.AddComponent<PhotonView>();
-        // PhotonNetwork asignará automáticamente un ViewID válido
+        
+        // Configurar el PhotonView correctamente
+        photonView.ViewID = 0; // Temporal, será asignado por PhotonNetwork
+        photonView.Synchronization = ViewSynchronization.UnreliableOnChange;
+        
+        // Guardar referencia para asignar ViewID más tarde
+        StartCoroutine(AssignScoreManagerViewID(scoreManagerObj));
+        
         Debug.Log("🏆 ScoreManager created automatically");
+    }
+    
+    System.Collections.IEnumerator AssignScoreManagerViewID(GameObject scoreManagerObj)
+    {
+        // Esperar a que PhotonNetwork esté listo
+        while (!PhotonNetwork.IsConnectedAndReady)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        // Asignar ViewID válido
+        var photonView = scoreManagerObj.GetComponent<PhotonView>();
+        if (photonView != null)
+        {
+            // Solicitar ViewID al servidor
+            yield return new WaitForSeconds(0.5f); // Dar tiempo para que se asigne
+            Debug.Log($"🏆 ScoreManager ViewID asignado: {photonView.ViewID}");
+        }
     }
     
     void CreateSimpleScoreboard()

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using Photon.Pun;
+using TMPro;
 
 public class HealthBarManager : MonoBehaviour
 {
@@ -40,7 +41,34 @@ public class HealthBarManager : MonoBehaviour
         canvas.worldCamera = Camera.main;
         
         RectTransform canvasRect = canvasGO.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(2f, 0.3f);
+        canvasRect.sizeDelta = new Vector2(4f, 1.2f);
+        
+        // Create Name Label
+        GameObject nameGO = new GameObject("PlayerName");
+        nameGO.transform.SetParent(canvasGO.transform, false);
+        TextMeshProUGUI nameText = nameGO.AddComponent<TextMeshProUGUI>();
+        string playerName = string.IsNullOrEmpty(player.photonView.Owner.NickName) ? $"Player {player.photonView.Owner.ActorNumber}" : player.photonView.Owner.NickName;
+        nameText.text = playerName;
+        nameText.fontSize = 0.5f;
+        nameText.color = Color.white;
+        nameText.alignment = TextAlignmentOptions.Center;
+        nameText.textWrappingMode = TextWrappingModes.NoWrap;
+        
+        // Assign default font
+        TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        if (font != null)
+        {
+            nameText.font = font;
+        }
+        else
+        {
+            Debug.LogError("Failed to load TMP font for health bar name!");
+        }
+        
+        RectTransform nameRect = nameGO.GetComponent<RectTransform>();
+        nameRect.anchorMin = new Vector2(0, 0.5f);
+        nameRect.anchorMax = new Vector2(1, 1f);
+        nameRect.sizeDelta = Vector2.zero;
         
         // Create Background (black)
         GameObject bgGO = new GameObject("BG");
@@ -49,8 +77,8 @@ public class HealthBarManager : MonoBehaviour
         bgImg.color = Color.black;
         
         RectTransform bgRect = bgGO.GetComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
+        bgRect.anchorMin = new Vector2(0, 0);
+        bgRect.anchorMax = new Vector2(1, 0.5f);
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
         
@@ -68,7 +96,7 @@ public class HealthBarManager : MonoBehaviour
         
         healthBars[id] = canvasGO;
         
-        Debug.Log("Created health bar for player " + id);
+        Debug.Log("Created health bar for player " + id + " with name: " + nameText.text + " and font: " + (font != null ? font.name : "NONE"));
     }
     
     void UpdateHealthBar(PlayerController player, int id)
@@ -79,7 +107,11 @@ public class HealthBarManager : MonoBehaviour
         if (canvasGO == null) return;
         
         // Update position
-        canvasGO.transform.position = player.transform.position + Vector3.up * 4f;
+        canvasGO.transform.position = player.transform.position + Vector3.up * 5f;
+        
+        // Make it face the camera
+        canvasGO.transform.LookAt(Camera.main.transform);
+        canvasGO.transform.Rotate(0, 180, 0); // Flip to face correctly
         
         // Update health
         Transform fillTransform = canvasGO.transform.Find("BG/Fill");
@@ -96,6 +128,9 @@ public class HealthBarManager : MonoBehaviour
             else if (healthPercent > 0.3f) fillImg.color = Color.yellow;
             else fillImg.color = Color.red;
         }
+        
+        // Debug ray to visualize position
+        Debug.DrawRay(canvasGO.transform.position, Vector3.up * 2f, Color.red, 1f);
     }
     
     void CleanupHealthBars()
