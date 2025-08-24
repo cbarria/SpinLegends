@@ -96,6 +96,21 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             // Para jugadores remotos ya se configuró interpolación arriba
         }
+
+        // Enlarge hitbox slightly
+        var collider = GetComponent<SphereCollider>();
+        if (collider != null)
+        {
+            collider.radius *= 1.2f; // Increase by 20%
+        }
+        else
+        {
+            var boxCollider = GetComponent<BoxCollider>();
+            if (boxCollider != null)
+            {
+                boxCollider.size *= 1.2f;
+            }
+        }
     }
     
     void SetupJoystick()
@@ -347,6 +362,24 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         {
             CameraShake.Instance.ShakeCamera(0.5f, 0.8f); // ¡SHAKE SÚPER INTENSO!
         }
+
+        // Basic particles
+        GameObject particleObj = new GameObject("CollisionParticles");
+        particleObj.transform.position = collisionPoint;
+        var ps = particleObj.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 0.5f;
+        main.startSpeed = 5f;
+        main.startSize = 0.1f;
+        main.startColor = Color.yellow;
+        main.maxParticles = 50;
+        main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
+        var emission = ps.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 0;
+        emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 50) });
+        ps.Play();
+        Destroy(particleObj, 1f);
     }
     
     public void TakeDamage(float damage)
@@ -425,6 +458,28 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             var content = new object[] { photonView.OwnerActorNr, 1f };
             var options = new Photon.Realtime.RaiseEventOptions { Receivers = Photon.Realtime.ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(102, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
+
+            // Basic explosion on death
+            GameObject explosionObj = new GameObject("DeathExplosion");
+            explosionObj.transform.position = transform.position;
+            var ps = explosionObj.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.startLifetime = 1f;
+            main.startSpeed = 10f;
+            main.startSize = 0.2f;
+            main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
+            main.maxParticles = 200;
+            main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 200) });
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 1f;
+            ps.Play();
+            Destroy(explosionObj, 2f);
+
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
         }

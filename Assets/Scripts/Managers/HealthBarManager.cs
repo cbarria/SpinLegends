@@ -7,6 +7,9 @@ using TMPro;
 public class HealthBarManager : MonoBehaviour
 {
     private Dictionary<int, GameObject> healthBars = new Dictionary<int, GameObject>();
+    private Dictionary<PlayerController, float> targetHealth = new Dictionary<PlayerController, float>();
+    private Dictionary<PlayerController, Image> fillImages = new Dictionary<PlayerController, Image>();
+    private Dictionary<PlayerController, float> targetAnchorX = new Dictionary<PlayerController, float>();
 
     void Update()
     {
@@ -95,6 +98,9 @@ public class HealthBarManager : MonoBehaviour
         fillRect.offsetMax = Vector2.zero;
         
         healthBars[id] = canvasGO;
+        fillImages[player] = fillImg;
+        targetHealth[player] = player.CurrentHealth / player.MaxHealth;
+        targetAnchorX[player] = 1f; // Initial full health
         
         Debug.Log("Created health bar for player " + id + " with name: " + nameText.text + " and font: " + (font != null ? font.name : "NONE"));
     }
@@ -113,7 +119,7 @@ public class HealthBarManager : MonoBehaviour
         canvasGO.transform.LookAt(Camera.main.transform);
         canvasGO.transform.Rotate(0, 180, 0); // Flip to face correctly
         
-        // Update health
+        // Update health with lerp
         Transform fillTransform = canvasGO.transform.Find("BG/Fill");
         if (fillTransform != null)
         {
@@ -122,15 +128,61 @@ public class HealthBarManager : MonoBehaviour
             
             float healthPercent = player.CurrentHealth / player.MaxHealth;
             
-            fillRect.anchorMax = new Vector2(healthPercent, 1f);
+            // Lerp the anchorMax.x
+            float currentX = fillRect.anchorMax.x;
+            float targetX = healthPercent;
+            fillRect.anchorMax = new Vector2(Mathf.Lerp(currentX, targetX, Time.deltaTime * 5f), 1f);
             
+            // Color update
             if (healthPercent > 0.6f) fillImg.color = Color.green;
             else if (healthPercent > 0.3f) fillImg.color = Color.yellow;
             else fillImg.color = Color.red;
+            
+            // Damage popup if decreased
+            if (healthPercent < targetAnchorX[player])
+            {
+                float damage = (targetAnchorX[player] - healthPercent) * player.MaxHealth;
+                CreateDamageText(canvasGO, damage);
+            }
+            targetAnchorX[player] = healthPercent;
         }
         
-        // Debug ray to visualize position
+        // Debug ray
         Debug.DrawRay(canvasGO.transform.position, Vector3.up * 2f, Color.red, 1f);
+    }
+
+    private void CreateDamageText(GameObject canvasGO, float damage)
+    {
+        GameObject textGO = new GameObject("DamageText");
+        textGO.transform.SetParent(canvasGO.transform, false);
+        var text = textGO.AddComponent<TextMeshProUGUI>();
+        text.text = $"-{Mathf.RoundToInt(damage)}";
+        text.fontSize = 0.5f;
+        text.color = Color.red;
+        text.alignment = TextAlignmentOptions.Center;
+
+        var rect = textGO.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0, 0.5f);
+
+        // Simple animation: move up and fade
+        StartCoroutine(AnimateDamageText(textGO));
+    }
+
+    private System.Collections.IEnumerator AnimateDamageText(GameObject textGO)
+    {
+        TextMeshProUGUI text = textGO.GetComponent<TextMeshProUGUI>();
+        RectTransform rect = textGO.GetComponent<RectTransform>();
+        float timer = 0f;
+        while (timer < 1f)
+        {
+            timer += Time.deltaTime;
+            rect.anchoredPosition += new Vector2(0, Time.deltaTime * 1f);
+            text.color = new Color(1, 0, 0, 1 - timer);
+            yield return null;
+        }
+        Destroy(textGO);
     }
     
     void CleanupHealthBars()
