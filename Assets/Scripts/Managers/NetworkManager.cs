@@ -237,6 +237,49 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
                 RequestRespawn(actorNumber, delay);
             }
         }
+        else if (photonEvent.Code == 105) // Death explosion event
+        {
+            object[] content = (object[])photonEvent.CustomData;
+            Vector3 position = (Vector3)content[0];
+
+            Debug.Log("Received death explosion event at position: " + position);
+
+            // Particles
+            GameObject explosionObj = new GameObject("DeathExplosion");
+            explosionObj.transform.position = position;
+            var ps = explosionObj.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.startLifetime = 1f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(8f, 12f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
+            main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
+            main.maxParticles = 400;
+            main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0;
+            emission.SetBursts(new ParticleSystem.Burst[] {
+                new ParticleSystem.Burst(0f, 300),
+                new ParticleSystem.Burst(0.2f, 100)
+            });
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 1.5f;
+            ps.Play();
+            Destroy(explosionObj, 2f);
+
+            // Sound
+            AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
+            if (explosionClip != null)
+            {
+                Debug.Log("Playing explosion sound locally");
+                AudioSource.PlayClipAtPoint(explosionClip, position, 1.2f);
+            }
+            else
+            {
+                Debug.LogWarning("death_explosion clip not found");
+            }
+        }
     }
     
     void VerifyPlayersVisible()
