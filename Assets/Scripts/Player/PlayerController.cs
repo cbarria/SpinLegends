@@ -505,12 +505,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
             if (explosionClip != null)
             {
+                Debug.Log("Explosion clip loaded, playing...");
                 audioSource.PlayOneShot(explosionClip, 1.2f); // Increased for more impact
             }
             else
             {
                 Debug.LogWarning("death_explosion clip not found in Resources/Audio");
             }
+
+            // Sync explosion effects to all clients
+            photonView.RPC("PlayDeathExplosionRPC", RpcTarget.All);
 
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
@@ -746,5 +750,53 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     public void TestJoystick()
     {
         // Test silencioso
+    }
+
+    [PunRPC]
+    void PlayDeathExplosionRPC()
+    {
+        Debug.Log("Playing death explosion for ViewID: " + photonView.ViewID);
+
+        // Particles
+        GameObject explosionObj = new GameObject("DeathExplosion");
+        explosionObj.transform.position = transform.position;
+        var ps = explosionObj.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 1f;
+        main.startSpeed = new ParticleSystem.MinMaxCurve(8f, 12f); // Randomized speed
+        main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.3f); // Randomized size
+        main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
+        main.maxParticles = 400;
+        main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
+        var emission = ps.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 0;
+        emission.SetBursts(new ParticleSystem.Burst[] {
+            new ParticleSystem.Burst(0f, 300),
+            new ParticleSystem.Burst(0.2f, 100) // Second burst for prolonged effect
+        });
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 1.5f;
+        ps.Play();
+        Destroy(explosionObj, 2f);
+
+        // Sound
+        if (audioSource == null)
+        {
+            Debug.LogWarning("audioSource missing for explosion sound");
+            return;
+        }
+
+        AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
+        if (explosionClip != null)
+        {
+            Debug.Log("Explosion clip loaded, playing...");
+            audioSource.PlayOneShot(explosionClip, 1.2f);
+        }
+        else
+        {
+            Debug.LogWarning("death_explosion clip not found");
+        }
     }
 } 
