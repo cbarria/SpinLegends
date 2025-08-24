@@ -19,6 +19,7 @@ public class GameManager : MonoBehaviour
 
     private PlayerController localPlayer;
     private NetworkManager networkManager;
+    private AudioSource bgMusic;
 
     void Awake()
     {
@@ -87,6 +88,22 @@ public class GameManager : MonoBehaviour
         {
             healthBar.gameObject.SetActive(false); // Ocultar la barra superior
         }
+
+        GameObject bgObj = new GameObject("BackgroundMusic");
+        bgMusic = bgObj.AddComponent<AudioSource>();
+        bgMusic.loop = true;
+        AudioClip bgClip = Resources.Load<AudioClip>("Audio/background_exciting");
+        if (bgClip != null)
+        {
+            bgMusic.clip = bgClip;
+            bgMusic.Play();
+            bgMusic.volume = 0.5f; // Adjust volume
+        }
+        else
+        {
+            Debug.LogWarning("background_exciting clip not found in Resources/Audio");
+        }
+        DontDestroyOnLoad(bgObj);
     }
     
     void CreateNetworkManager()

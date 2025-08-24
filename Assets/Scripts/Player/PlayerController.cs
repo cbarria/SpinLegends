@@ -45,6 +45,8 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
     private bool isGrounded = true;
     private float currentSpinSpeed = 0f;
     
+    private AudioSource audioSource;
+
     void Start()
     {
         currentHealth = maxHealth;
@@ -111,6 +113,9 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 boxCollider.size *= 1.2f;
             }
         }
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.spatialBlend = 1f; // 3D sound
     }
     
     void SetupJoystick()
@@ -380,6 +385,17 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 50) });
         ps.Play();
         Destroy(particleObj, 1f);
+
+        // Play metallic sound
+        AudioClip impactClip = Resources.Load<AudioClip>("Audio/impact_metal");
+        if (impactClip != null)
+        {
+            audioSource.PlayOneShot(impactClip, 0.7f); // Adjust volume
+        }
+        else
+        {
+            Debug.LogWarning("impact_metal clip not found in Resources/Audio");
+        }
     }
     
     public void TakeDamage(float damage)
