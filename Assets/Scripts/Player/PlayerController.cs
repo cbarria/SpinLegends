@@ -499,6 +499,17 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             ps.Play();
             Destroy(explosionObj, 2f);
 
+            // Play explosion sound
+            AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
+            if (explosionClip != null)
+            {
+                audioSource.PlayOneShot(explosionClip, 0.8f); // Adjust volume
+            }
+            else
+            {
+                Debug.LogWarning("death_explosion clip not found in Resources/Audio");
+            }
+
             // Destruir el objeto simple
             PhotonNetwork.Destroy(gameObject);
         }
