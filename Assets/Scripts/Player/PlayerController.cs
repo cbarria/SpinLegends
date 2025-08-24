@@ -386,15 +386,17 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         ps.Play();
         Destroy(particleObj, 1f);
 
-        // Play metallic sound
-        AudioClip impactClip = Resources.Load<AudioClip>("Audio/impact_metal");
+        // Play random metallic sound
+        string[] impactClips = new string[] { "impact_metal1", "impact_metal2", "impact_metal3" };
+        string randomClipName = impactClips[Random.Range(0, impactClips.Length)];
+        AudioClip impactClip = Resources.Load<AudioClip>("Audio/" + randomClipName);
         if (impactClip != null)
         {
-            audioSource.PlayOneShot(impactClip, 0.7f); // Adjust volume
+            audioSource.PlayOneShot(impactClip, 0.7f);
         }
         else
         {
-            Debug.LogWarning("impact_metal clip not found in Resources/Audio");
+            Debug.LogWarning(randomClipName + " clip not found in Resources/Audio");
         }
     }
     
