@@ -407,11 +407,16 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             // Dar puntos solo si fue por combate (legacy)
             if (lastHitByActor != 0)
             {
-                photonView.RPC("RequestKOScoreRPC", RpcTarget.MasterClient, lastHitByActor, photonView.OwnerActorNr);
+                object[] content = new object[] { lastHitByActor, photonView.OwnerActorNr, photonView.ViewID };
+                RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+                PhotonNetwork.RaiseEvent(103, content, options, ExitGames.Client.Photon.SendOptions.SendReliable);
             }
             
             // SIEMPRE hacer respawn, sin importar la causa de muerte
-            photonView.RPC("NotifyDeathRPC", RpcTarget.MasterClient, photonView.OwnerActorNr);
+            object[] deathContent = new object[] { photonView.OwnerActorNr, photonView.ViewID };
+            RaiseEventOptions deathOptions = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+            PhotonNetwork.RaiseEvent(104, deathContent, deathOptions, ExitGames.Client.Photon.SendOptions.SendReliable);
+
             // Ocultar joystick cuando muere
             HideJoystick();
             
@@ -443,31 +448,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             Debug.Log($"🛡️➡️⚔️ INMUNIDAD TERMINADA: Player {photonView.OwnerActorNr} ya puede recibir daño");
         }
     }
-
-    [PunRPC]
-    void NotifyDeathRPC(int actorNumber)
-    {
-        // Master recibe notificación de muerte
-        if (PhotonNetwork.IsMasterClient)
-        {
-            Debug.Log($"🏆 Master recibió notificación de muerte del Player {actorNumber}");
-            
-            // Notificar al ScoreManager para registrar la muerte
-            var scoreManager = FindFirstObjectByType<ScoreManager>();
-            if (scoreManager != null)
-            {
-                // Registrar muerte sin killer (caída, etc.)
-                scoreManager.RegisterDeath(actorNumber, photonView.ViewID);
-                Debug.Log($"🏆 ScoreManager notificado de muerte del Player {actorNumber}");
-            }
-            else
-            {
-                Debug.LogError("❌ ScoreManager no encontrado para registrar muerte!");
-            }
-        }
-    }
-
-
 
     void HideJoystick()
     {
@@ -532,42 +512,6 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         }
     }
 
-    [PunRPC]
-    void RequestKOScoreRPC(int attackerActor, int victimActor)
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-        var scoreMgr = FindFirstObjectByType<ScoreManager>();
-        if (scoreMgr != null)
-        {
-            // Registrar kill y death en el ScoreManager
-            scoreMgr.RegisterKill(attackerActor, victimActor, photonView.ViewID);
-            Debug.Log($"🏆 ScoreManager notificado de kill: Player {attackerActor} mató a Player {victimActor}");
-        }
-        else
-        {
-            Debug.LogError("❌ ScoreManager no encontrado para registrar kill!");
-        }
-    }
-    
-    public bool IsSpinning()
-    {
-        return isSpinning;
-    }
-    
-    public Rigidbody Rigidbody => rb;
-    
-    // Propiedad pública para acceder a la salud actual
-    public float CurrentHealth => currentHealth;
-    
-    // Propiedad pública para acceder a la salud máxima
-    public float MaxHealth => maxHealth;
-    
-    // Método para debug del joystick (logs removidos)
-    public void TestJoystick()
-    {
-        // Test silencioso
-    }
-    
     void RetryFindJoystick()
     {
         // Buscar joysticks nuevamente

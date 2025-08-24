@@ -1,8 +1,9 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections.Generic;
+using Photon.Realtime;
 
-public class ScoreManager : MonoBehaviourPun
+public class ScoreManager : MonoBehaviourPun, IOnEventCallback
 {
     public static ScoreManager Instance;
 
@@ -20,6 +21,33 @@ public class ScoreManager : MonoBehaviourPun
         else
         {
             Destroy(gameObject);
+        }
+        PhotonNetwork.AddCallbackTarget(this);
+    }
+
+    void OnDestroy()
+    {
+        PhotonNetwork.RemoveCallbackTarget(this);
+    }
+
+    public void OnEvent(EventData photonEvent)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        if (photonEvent.Code == 103) // Kill notification
+        {
+            object[] content = (object[])photonEvent.CustomData;
+            int killerActor = (int)content[0];
+            int victimActor = (int)content[1];
+            int victimViewID = (int)content[2];
+            RegisterKill(killerActor, victimActor, victimViewID);
+        }
+        else if (photonEvent.Code == 104) // Death notification
+        {
+            object[] content = (object[])photonEvent.CustomData;
+            int victimActor = (int)content[0];
+            int victimViewID = (int)content[1];
+            RegisterDeath(victimActor, victimViewID);
         }
     }
 
