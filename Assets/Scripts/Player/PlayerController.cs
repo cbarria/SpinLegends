@@ -355,20 +355,21 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
                 rb.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
             }
             
-            // Efectos de colisión
-            PlayCollisionEffects(collision.contacts[0].point);
+            // Sync collision effects
+            photonView.RPC("PlayCollisionEffectsRPC", RpcTarget.All, collision.contacts[0].point);
         }
     }
     
-    void PlayCollisionEffects(Vector3 collisionPoint)
+    [PunRPC]
+    void PlayCollisionEffectsRPC(Vector3 collisionPoint)
     {
-        // Shake de cámara EXPLOSIVO si es el jugador local
+        // Shake if local
         if (photonView.IsMine && CameraShake.Instance != null)
         {
-            CameraShake.Instance.ShakeCamera(0.5f, 0.8f); // ¡SHAKE SÚPER INTENSO!
+            CameraShake.Instance.ShakeCamera(0.5f, 0.8f);
         }
 
-        // Basic particles
+        // Particles
         GameObject particleObj = new GameObject("CollisionParticles");
         particleObj.transform.position = collisionPoint;
         var ps = particleObj.AddComponent<ParticleSystem>();
@@ -386,17 +387,19 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         ps.Play();
         Destroy(particleObj, 1f);
 
-        // Play random metallic sound
+        // Random sound with pitch variation
         string[] impactClips = new string[] { "impact_metal1", "impact_metal2", "impact_metal3" };
         string randomClipName = impactClips[Random.Range(0, impactClips.Length)];
         AudioClip impactClip = Resources.Load<AudioClip>("Audio/" + randomClipName);
         if (impactClip != null)
         {
-            audioSource.PlayOneShot(impactClip, 1f); // Increased volume for boom
+            audioSource.pitch = Random.Range(0.9f, 1.1f); // Slight randomization
+            audioSource.PlayOneShot(impactClip, 1f);
+            audioSource.pitch = 1f; // Reset
         }
         else
         {
-            Debug.LogWarning(randomClipName + " clip not found in Resources/Audio");
+            Debug.LogWarning(randomClipName + " clip not found");
         }
     }
     
