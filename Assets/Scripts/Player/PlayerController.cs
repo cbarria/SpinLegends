@@ -465,18 +465,21 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             var ps = explosionObj.AddComponent<ParticleSystem>();
             var main = ps.main;
             main.startLifetime = 1f;
-            main.startSpeed = 10f;
-            main.startSize = 0.2f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(8f, 12f); // Randomized speed
+            main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.3f); // Randomized size
             main.startColor = new ParticleSystem.MinMaxGradient { mode = ParticleSystemGradientMode.TwoColors, colorMin = Color.red, colorMax = Color.yellow };
-            main.maxParticles = 200;
+            main.maxParticles = 400;
             main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
             var emission = ps.emission;
             emission.enabled = true;
             emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 200) });
+            emission.SetBursts(new ParticleSystem.Burst[] {
+                new ParticleSystem.Burst(0f, 300),
+                new ParticleSystem.Burst(0.2f, 100) // Second burst for prolonged effect
+            });
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 1f;
+            shape.radius = 1.5f;
             ps.Play();
             Destroy(explosionObj, 2f);
 

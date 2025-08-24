@@ -50,7 +50,8 @@ public class HealthBarManager : MonoBehaviour
         GameObject nameGO = new GameObject("PlayerName");
         nameGO.transform.SetParent(canvasGO.transform, false);
         TextMeshProUGUI nameText = nameGO.AddComponent<TextMeshProUGUI>();
-        string playerName = string.IsNullOrEmpty(player.photonView.Owner.NickName) ? $"Player {player.photonView.Owner.ActorNumber}" : player.photonView.Owner.NickName;
+        int actorNumber = player.photonView.Owner.ActorNumber;
+        string playerName = string.IsNullOrEmpty(player.photonView.Owner.NickName) ? $"Player {actorNumber}" : player.photonView.Owner.NickName;
         nameText.text = playerName;
         nameText.fontSize = 0.5f;
         nameText.color = Color.white;
@@ -177,12 +178,13 @@ public class HealthBarManager : MonoBehaviour
         float timer = 0f;
         while (timer < 1f)
         {
+            if (textGO == null || text == null || rect == null) yield break;
             timer += Time.deltaTime;
             rect.anchoredPosition += new Vector2(0, Time.deltaTime * 1f);
             text.color = new Color(1, 0, 0, 1 - timer);
             yield return null;
         }
-        Destroy(textGO);
+        if (textGO != null) Destroy(textGO);
     }
     
     void CleanupHealthBars()
