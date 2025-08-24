@@ -273,7 +273,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks, IOnEventCallback
             if (explosionClip != null)
             {
                 Debug.Log("Playing explosion sound locally");
-                AudioSource.PlayClipAtPoint(explosionClip, position, 1.2f);
+                AudioSource.PlayClipAtPoint(explosionClip, position, 1.5f); // Increased volume
             }
             else
             {

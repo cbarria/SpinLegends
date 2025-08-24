@@ -53,6 +53,8 @@ MonoBehaviour:
   - NotifyDeathRPC
   - RPC_SyncDeathStats
   - RPC_SyncKillStats
+  - PlayDeathExplosionRPC
+  - PlayCollisionEffectsRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
