@@ -97,7 +97,7 @@ public class GameManager : MonoBehaviour
         {
             bgMusic.clip = bgClip;
             bgMusic.Play();
-            bgMusic.volume = 0f; // Temporarily muted for testing
+            bgMusic.volume = 0.2f; // Soft volume as requested
         }
         else
         {
