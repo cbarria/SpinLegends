@@ -392,7 +392,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
         AudioClip impactClip = Resources.Load<AudioClip>("Audio/" + randomClipName);
         if (impactClip != null)
         {
-            audioSource.PlayOneShot(impactClip, 0.7f);
+            audioSource.PlayOneShot(impactClip, 1f); // Increased volume for boom
         }
         else
         {
@@ -505,7 +505,7 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
             AudioClip explosionClip = Resources.Load<AudioClip>("Audio/death_explosion");
             if (explosionClip != null)
             {
-                audioSource.PlayOneShot(explosionClip, 0.8f); // Adjust volume
+                audioSource.PlayOneShot(explosionClip, 1.2f); // Increased for more impact
             }
             else
             {
